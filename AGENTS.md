@@ -356,7 +356,7 @@ The `applies_to` tag filters content based on the user's selected product and ve
 
 - When a significant new feature is introduced, you **MUST** tag it accordingly in the docs together with the applicable `M.N` version of the product or of Elastic Stack. 
 - When a deprecation occurs in an EDOT, you **MUST** tag the feature/setting/entity so that it's clear from which version it becomes deprecated. 
-- When a feature/setting is no longer available, you **MUST** remove it from the documentation. 
+- When a feature/setting is no longer available for Serverless, you **MUST** remove it from the documentation. This applies to Serverless ONLY.
 
 If this context information is not available, you **MUST** ask the user for it.
 
