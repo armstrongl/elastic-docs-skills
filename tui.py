@@ -111,28 +111,36 @@ def main(stdscr):
         else:
             return ""
 
-    banner = [
-        "\u2597\u2584\u2584\u2584\u2596\u2597\u2596    \u2597\u2584\u2596  \u2597\u2584\u2584\u2596\u2597\u2584\u2584\u2584\u2596\u2597\u2584\u2584\u2584\u2596 \u2597\u2584\u2584\u2596    \u2597\u2584\u2584\u2584  \u2597\u2584\u2596  \u2597\u2584\u2584\u2596 \u2597\u2584\u2584\u2596     \u2597\u2584\u2584\u2596\u2597\u2596 \u2597\u2596\u2597\u2584\u2584\u2584\u2596\u2597\u2596   \u2597\u2596    \u2597\u2584\u2584\u2596",
-        "\u2590\u258c   \u2590\u258c   \u2590\u258c \u2590\u258c\u2590\u258c     \u2588    \u2588  \u2590\u258c       \u2590\u258c  \u2588\u2590\u258c \u2590\u258c\u2590\u258c   \u2590\u258c       \u2590\u258c   \u2590\u258c\u2597\u259e\u2580   \u2588  \u2590\u258c   \u2590\u258c   \u2590\u258c   ",
-        "\u2590\u259b\u2580\u2580\u2598\u2590\u258c   \u2590\u259b\u2580\u259c\u258c \u259d\u2580\u259a\u2596  \u2588    \u2588  \u2590\u258c       \u2590\u258c  \u2588\u2590\u258c \u2590\u258c\u2590\u258c    \u259d\u2580\u259a\u2596     \u259d\u2580\u259a\u2596\u2590\u259b\u259a\u2596   \u2588  \u2590\u258c   \u2590\u258c    \u259d\u2580\u259a\u2596",
-        "\u2590\u2599\u2584\u2584\u2596\u2590\u2599\u2584\u2584\u2596\u2590\u258c \u2590\u258c\u2597\u2584\u2584\u259e\u2580  \u2588  \u2597\u2584\u2588\u2584\u2596\u259d\u259a\u2584\u2584\u2596    \u2590\u2599\u2584\u2584\u2580\u259d\u259a\u2584\u259e\u2580\u259d\u259a\u2584\u2584\u2596\u2597\u2584\u2584\u259e\u2580    \u2597\u2584\u2584\u259e\u2580\u2590\u258c \u2590\u258c\u2597\u2584\u2588\u2584\u2596\u2590\u2599\u2584\u2584\u2596\u2590\u2599\u2584\u2584\u2596\u2597\u2584\u2584\u259e\u2580",
+    banner_lines = [
+        r"  ___ _         _   _      ___               ___ _   _ _ _    ",
+        r" | __| |__ _ __| |_(_)__  |   \ ___  __ ___ / __| |_(_) | |___",
+        r" | _|| / _` (_-<  _| / _| | |) / _ \/ _(_-< \__ \ / / | | (_-<",
+        r" |___|_\__,_/__/\__|_\__| |___/\___/\__/__/ |___/_\_\_|_|_/__/",
     ]
+    banner_width = max(len(l) for l in banner_lines)
+    fallback_title = " Elastic Docs Skills "
 
     while True:
         stdscr.erase()
         max_y, max_x = stdscr.getmaxyx()
         filtered = get_filtered()
 
-        # ── Banner ──
-        for i, bline in enumerate(banner):
-            if i >= max_y - 1:
-                break
-            x = max(0, (max_x - len(bline)) // 2)
+        # ── Title: banner if it fits, simple text otherwise ──
+        if max_x >= banner_width + 2:
+            for i, bline in enumerate(banner_lines):
+                if i >= max_y - 1:
+                    break
+                x = max(0, (max_x - len(bline)) // 2)
+                stdscr.attron(curses.color_pair(1) | curses.A_BOLD)
+                stdscr.addnstr(i, x, bline, max_x - x - 1)
+                stdscr.attroff(curses.color_pair(1) | curses.A_BOLD)
+            banner_h = len(banner_lines)
+        else:
+            x = max(0, (max_x - len(fallback_title)) // 2)
             stdscr.attron(curses.color_pair(1) | curses.A_BOLD)
-            stdscr.addnstr(i, x, bline, max_x - x - 1)
+            stdscr.addnstr(0, x, fallback_title, max_x - 1)
             stdscr.attroff(curses.color_pair(1) | curses.A_BOLD)
-
-        banner_h = len(banner)
+            banner_h = 1
 
         # ── Help line ──
         help_parts = [
@@ -247,7 +255,10 @@ def main(stdscr):
         stdscr.refresh()
         key = stdscr.getch()
 
-        if key == ord("q") or key == 27:  # q or ESC
+        if key == curses.KEY_RESIZE:
+            stdscr.clear()
+            continue
+        elif key == ord("q") or key == 27:  # q or ESC
             return
         elif key in (ord("\n"), curses.KEY_ENTER, 10, 13):
             write_result()
