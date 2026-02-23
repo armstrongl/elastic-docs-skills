@@ -1,4 +1,4 @@
-# elastic-docs-skills
+# Elastic Docs Skills
 
 A catalog of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills for Elastic documentation workflows.
 
@@ -6,36 +6,13 @@ Browse the catalog, pick the skills you need, and install them with a single com
 
 ## Quick start
 
-No clone needed — just curl and run:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/elastic/elastic-docs-skills/main/install.sh | bash
-```
-
-This fetches the skill catalog from GitHub and launches an interactive TUI where you can select which skills to install. Only requires Python 3 (ships with macOS and most Linux distributions).
-
-### Other install options
-
-```bash
-# List available skills
-curl -sSL https://raw.githubusercontent.com/elastic/elastic-docs-skills/main/install.sh | bash -s -- --list
-
-# Install all skills
-curl -sSL https://raw.githubusercontent.com/elastic/elastic-docs-skills/main/install.sh | bash -s -- --all
-```
-
-Or from a local clone:
+Clone the repository and run the interactive installer:
 
 ```bash
 git clone https://github.com/elastic/elastic-docs-skills.git
 cd elastic-docs-skills
-./install.sh                   # Interactive TUI
-./install.sh --list            # List all available skills
-./install.sh --all             # Install everything
-./install.sh --uninstall NAME  # Remove an installed skill
+./install.sh
 ```
-
-Skills are installed to `~/.claude/skills/` so they're available in all your projects.
 
 ## Creating new skills
 
