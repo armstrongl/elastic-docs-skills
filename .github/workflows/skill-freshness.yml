@@ -1,0 +1,38 @@
+name: Skill Freshness Check
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday 9am UTC
+  workflow_dispatch:       # Manual trigger
+
+permissions:
+  issues: write
+
+jobs:
+  create-freshness-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create issue for Copilot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh issue create \
+            --title "Weekly skill freshness check — $(date +%Y-%m-%d)" \
+            --body "$(cat <<'EOF'
+          Check all skills in `skills/**/SKILL.md` for staleness against their upstream source URLs.
+
+          For each skill:
+          1. Read the SKILL.md file
+          2. Fetch every source URL in its reference section
+          3. Compare the fetched content against the rules/syntax encoded in the skill
+          4. If the skill is stale (new rules added, syntax changed, options removed), edit it
+
+          If any files changed, open a PR summarizing what drifted and why.
+          If nothing changed, close this issue with a comment confirming all skills are current.
+
+          Use the `docs-freshness-checker` agent for this task.
+          EOF
+          )" \
+            --assignee "copilot-swe-agent[bot]" \
+            --label "automated,skill-freshness"
