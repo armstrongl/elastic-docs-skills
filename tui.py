@@ -142,7 +142,7 @@ def main(stdscr):
             stdscr.attroff(curses.color_pair(1) | curses.A_BOLD)
             banner_h = 1
 
-        # ── Help line ──
+        # ── Help line (centered, with highlighted keys) ──
         help_parts = [
             ("SPACE", "toggle"),
             ("ENTER", "confirm"),
@@ -151,21 +151,26 @@ def main(stdscr):
             ("n", "none"),
             ("q", "quit"),
         ]
-        help_y = banner_h
-        help_x = 1
-        for key, desc in help_parts:
+        # Calculate total width to center
+        help_str = "  ".join(f"{k} {d}" for k, d in help_parts)
+        help_y = banner_h + 1
+        help_x = max(1, (max_x - len(help_str)) // 2)
+        for i, (key, desc) in enumerate(help_parts):
             if help_x >= max_x - 1:
                 break
-            stdscr.attron(curses.A_BOLD)
-            stdscr.addnstr(help_y, help_x, key, max_x - help_x - 1)
-            stdscr.attroff(curses.A_BOLD)
-            help_x += len(key)
-            label = f"={desc}  "
+            stdscr.attron(curses.color_pair(4))
+            stdscr.addnstr(help_y, help_x, f" {key} ", max_x - help_x - 1)
+            stdscr.attroff(curses.color_pair(4))
+            help_x += len(key) + 2
+            label = f" {desc}"
             stdscr.addnstr(help_y, help_x, label, max_x - help_x - 1)
             help_x += len(label)
+            if i < len(help_parts) - 1:
+                stdscr.addnstr(help_y, help_x, "  ", max_x - help_x - 1)
+                help_x += 2
 
         # ── Filter bar ──
-        filter_y = banner_h + 1
+        filter_y = banner_h + 2
         if filter_text:
             filter_display = f" / {filter_text}_ "
         else:
@@ -173,7 +178,7 @@ def main(stdscr):
         stdscr.addnstr(filter_y, 0, filter_display, max_x - 1, curses.color_pair(1))
 
         # ── Column header ──
-        header_y = banner_h + 2
+        header_y = banner_h + 3
         hdr = f"      {'NAME':<20s} {'CATEGORY':<12s} {'VER':<8s} DESCRIPTION"
         stdscr.attron(curses.A_BOLD | curses.A_UNDERLINE)
         stdscr.addnstr(header_y, 0, hdr[: max_x - 1], max_x - 1)
