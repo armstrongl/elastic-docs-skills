@@ -111,16 +111,28 @@ def main(stdscr):
         else:
             return ""
 
+    banner = [
+        "\u2597\u2584\u2584\u2584\u2596\u2597\u2596    \u2597\u2584\u2596  \u2597\u2584\u2584\u2596\u2597\u2584\u2584\u2584\u2596\u2597\u2584\u2584\u2584\u2596 \u2597\u2584\u2584\u2596    \u2597\u2584\u2584\u2584  \u2597\u2584\u2596  \u2597\u2584\u2584\u2596 \u2597\u2584\u2584\u2596     \u2597\u2584\u2584\u2596\u2597\u2596 \u2597\u2596\u2597\u2584\u2584\u2584\u2596\u2597\u2596   \u2597\u2596    \u2597\u2584\u2584\u2596",
+        "\u2590\u258c   \u2590\u258c   \u2590\u258c \u2590\u258c\u2590\u258c     \u2588    \u2588  \u2590\u258c       \u2590\u258c  \u2588\u2590\u258c \u2590\u258c\u2590\u258c   \u2590\u258c       \u2590\u258c   \u2590\u258c\u2597\u259e\u2580   \u2588  \u2590\u258c   \u2590\u258c   \u2590\u258c   ",
+        "\u2590\u259b\u2580\u2580\u2598\u2590\u258c   \u2590\u259b\u2580\u259c\u258c \u259d\u2580\u259a\u2596  \u2588    \u2588  \u2590\u258c       \u2590\u258c  \u2588\u2590\u258c \u2590\u258c\u2590\u258c    \u259d\u2580\u259a\u2596     \u259d\u2580\u259a\u2596\u2590\u259b\u259a\u2596   \u2588  \u2590\u258c   \u2590\u258c    \u259d\u2580\u259a\u2596",
+        "\u2590\u2599\u2584\u2584\u2596\u2590\u2599\u2584\u2584\u2596\u2590\u258c \u2590\u258c\u2597\u2584\u2584\u259e\u2580  \u2588  \u2597\u2584\u2588\u2584\u2596\u259d\u259a\u2584\u2584\u2596    \u2590\u2599\u2584\u2584\u2580\u259d\u259a\u2584\u259e\u2580\u259d\u259a\u2584\u2584\u2596\u2597\u2584\u2584\u259e\u2580    \u2597\u2584\u2584\u259e\u2580\u2590\u258c \u2590\u258c\u2597\u2584\u2588\u2584\u2596\u2590\u2599\u2584\u2584\u2596\u2590\u2599\u2584\u2584\u2596\u2597\u2584\u2584\u259e\u2580",
+    ]
+
     while True:
         stdscr.erase()
         max_y, max_x = stdscr.getmaxyx()
         filtered = get_filtered()
 
-        # ── Title ──
-        title = " elastic-docs-skills installer "
-        stdscr.attron(curses.color_pair(1) | curses.A_BOLD)
-        stdscr.addnstr(0, max(0, (max_x - len(title)) // 2), title, max_x - 1)
-        stdscr.attroff(curses.color_pair(1) | curses.A_BOLD)
+        # ── Banner ──
+        for i, bline in enumerate(banner):
+            if i >= max_y - 1:
+                break
+            x = max(0, (max_x - len(bline)) // 2)
+            stdscr.attron(curses.color_pair(1) | curses.A_BOLD)
+            stdscr.addnstr(i, x, bline, max_x - x - 1)
+            stdscr.attroff(curses.color_pair(1) | curses.A_BOLD)
+
+        banner_h = len(banner)
 
         # ── Help line ──
         help_parts = [
@@ -131,27 +143,29 @@ def main(stdscr):
             ("n", "none"),
             ("q", "quit"),
         ]
+        help_y = banner_h
         help_x = 1
         for key, desc in help_parts:
             if help_x >= max_x - 1:
                 break
             stdscr.attron(curses.A_BOLD)
-            stdscr.addnstr(1, help_x, key, max_x - help_x - 1)
+            stdscr.addnstr(help_y, help_x, key, max_x - help_x - 1)
             stdscr.attroff(curses.A_BOLD)
             help_x += len(key)
             label = f"={desc}  "
-            stdscr.addnstr(1, help_x, label, max_x - help_x - 1)
+            stdscr.addnstr(help_y, help_x, label, max_x - help_x - 1)
             help_x += len(label)
 
         # ── Filter bar ──
+        filter_y = banner_h + 1
         if filter_text:
             filter_display = f" / {filter_text}_ "
         else:
             filter_display = " Type / to filter "
-        stdscr.addnstr(2, 0, filter_display, max_x - 1, curses.color_pair(1))
+        stdscr.addnstr(filter_y, 0, filter_display, max_x - 1, curses.color_pair(1))
 
         # ── Column header ──
-        header_y = 3
+        header_y = banner_h + 2
         hdr = f"      {'NAME':<20s} {'CATEGORY':<12s} {'VER':<8s} DESCRIPTION"
         stdscr.attron(curses.A_BOLD | curses.A_UNDERLINE)
         stdscr.addnstr(header_y, 0, hdr[: max_x - 1], max_x - 1)
@@ -268,7 +282,7 @@ def main(stdscr):
                 else:
                     fd = " / _ (type to search, ESC to clear) "
                 stdscr.addnstr(
-                    2, 0, fd[: max_x - 1].ljust(max_x - 1), max_x - 1,
+                    filter_y, 0, fd[: max_x - 1].ljust(max_x - 1), max_x - 1,
                     curses.color_pair(1),
                 )
                 stdscr.refresh()
