@@ -13,7 +13,11 @@ permissions:
   pull-requests: read
   issues: read
 
-network: defaults
+network:
+  allowed:
+    - defaults
+    - "www.elastic.co"
+    - "docs-v3-preview.elastic.dev"
 
 tools:
   github:
