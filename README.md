@@ -12,7 +12,7 @@ No clone needed — just curl and run:
 curl -sSL https://raw.githubusercontent.com/elastic/elastic-docs-skills/main/install.sh | bash
 ```
 
-This fetches the skill catalog from GitHub and launches an interactive TUI (powered by [gum](https://github.com/charmbracelet/gum)) where you can select which skills to install.
+This fetches the skill catalog from GitHub and launches an interactive TUI where you can select which skills to install. Only requires Python 3 (ships with macOS and most Linux distributions).
 
 ### Other install options
 

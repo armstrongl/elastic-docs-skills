@@ -3,7 +3,12 @@ set -euo pipefail
 
 # elastic-docs-skills installer
 # Interactive TUI for installing Claude Code skills from the catalog
-# Can be run locally or via: curl -sSL https://raw.githubusercontent.com/elastic/elastic-docs-skills/main/install.sh | bash
+# Zero external dependencies — uses Python 3 curses (ships with macOS/Linux)
+#
+# Usage:
+#   curl -sSL https://raw.githubusercontent.com/elastic/elastic-docs-skills/main/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/elastic/elastic-docs-skills/main/install.sh | bash -s -- --list
+#   curl -sSL https://raw.githubusercontent.com/elastic/elastic-docs-skills/main/install.sh | bash -s -- --all
 
 REPO="elastic/elastic-docs-skills"
 BRANCH="main"
@@ -31,8 +36,6 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-# ─── Helpers ────────────────────────────────────────────────────────────────
-
 info()  { echo -e "${CYAN}${BOLD}ℹ${NC} $1"; }
 ok()    { echo -e "${GREEN}${BOLD}✓${NC} $1"; }
 warn()  { echo -e "${YELLOW}${BOLD}⚠${NC} $1"; }
@@ -44,10 +47,7 @@ Usage: install.sh [OPTIONS]
 
 Interactive installer for elastic-docs-skills catalog.
 Works both from a local clone and via curl from GitHub.
-
-  curl -sSL $RAW_BASE/install.sh | bash
-  curl -sSL $RAW_BASE/install.sh | bash -s -- --list
-  curl -sSL $RAW_BASE/install.sh | bash -s -- --all
+Requires Python 3 (ships with macOS and most Linux distributions).
 
 Options:
   --list            List all available skills and exit
@@ -56,316 +56,371 @@ Options:
   --help            Show this help message
 
 Without options, launches an interactive TUI to select skills.
-Requires gum (https://github.com/charmbracelet/gum).
 EOF
 }
 
-# ─── Gum dependency ─────────────────────────────────────────────────────────
-
-check_gum() {
-  command -v gum &>/dev/null
-}
-
-install_gum() {
-  echo ""
-  warn "gum is required for the interactive installer."
-  echo "  https://github.com/charmbracelet/gum"
-  echo ""
-
-  if command -v brew &>/dev/null; then
-    read -rp "Install gum via Homebrew? [Y/n] " answer
-    if [[ "${answer:-Y}" =~ ^[Yy]$ ]]; then
-      brew install gum
-      return 0
-    fi
-  elif command -v apt-get &>/dev/null; then
-    read -rp "Install gum via apt? [Y/n] " answer
-    if [[ "${answer:-Y}" =~ ^[Yy]$ ]]; then
-      sudo mkdir -p /etc/apt/keyrings
-      curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg
-      echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list
-      sudo apt-get update && sudo apt-get install -y gum
-      return 0
-    fi
-  elif command -v dnf &>/dev/null; then
-    read -rp "Install gum via dnf? [Y/n] " answer
-    if [[ "${answer:-Y}" =~ ^[Yy]$ ]]; then
-      echo '[charm]
-name=Charm
-baseurl=https://repo.charm.sh/yum/
-enabled=1
-gpgcheck=1
-gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
-      sudo dnf install -y gum
-      return 0
-    fi
-  fi
-
-  err "Please install gum manually: https://github.com/charmbracelet/gum#installation"
-  exit 1
-}
-
-# ─── Skill scanning ─────────────────────────────────────────────────────────
-
-# Parse frontmatter value from content (stdin or file)
-parse_field_from_content() {
-  local content="$1" field="$2"
-  echo "$content" | sed -n '/^---$/,/^---$/p' | grep "^${field}:" | head -1 | sed "s/^${field}: *//"
-}
+# ─── Skill scanning (bash) ──────────────────────────────────────────────────
 
 parse_field() {
   local file="$1" field="$2"
   sed -n '/^---$/,/^---$/p' "$file" | grep "^${field}:" | head -1 | sed "s/^${field}: *//"
 }
 
-# Collect all skills into parallel arrays
-declare -a SKILL_PATHS=()
-declare -a SKILL_NAMES=()
-declare -a SKILL_VERSIONS=()
-declare -a SKILL_DESCRIPTIONS=()
-declare -a SKILL_CATEGORIES=()
+parse_field_from_content() {
+  local content="$1" field="$2"
+  echo "$content" | sed -n '/^---$/,/^---$/p' | grep "^${field}:" | head -1 | sed "s/^${field}: *//"
+}
 
-scan_skills_local() {
+# Builds a TSV catalog: name\tversion\tcategory\tdescription\tpath
+build_catalog_local() {
   while IFS= read -r skill_file; do
     local name version description category rel_path
-
     name="$(parse_field "$skill_file" "name")"
+    [[ -z "$name" ]] && continue
     version="$(parse_field "$skill_file" "version")"
     description="$(parse_field "$skill_file" "description")"
-
     rel_path="${skill_file#"$SKILLS_DIR/"}"
     category="$(echo "$rel_path" | cut -d'/' -f1)"
-
-    if [[ -z "$name" ]]; then
-      warn "Skipping $skill_file — missing name field"
-      continue
-    fi
-
-    SKILL_PATHS+=("$skill_file")
-    SKILL_NAMES+=("$name")
-    SKILL_VERSIONS+=("${version:-0.0.0}")
-    SKILL_DESCRIPTIONS+=("${description:-No description}")
-    SKILL_CATEGORIES+=("$category")
+    printf '%s\t%s\t%s\t%s\t%s\n' "$name" "${version:-0.0.0}" "$category" "${description:-No description}" "$skill_file"
   done < <(find "$SKILLS_DIR" -name "SKILL.md" -type f 2>/dev/null | sort)
 }
 
-scan_skills_remote() {
+build_catalog_remote() {
   info "Fetching skill catalog from GitHub..."
-
-  # Use GitHub API to recursively find all SKILL.md files under skills/
   local tree_response
   tree_response=$(curl -fsSL "${API_BASE}/git/trees/${BRANCH}?recursive=1" 2>/dev/null) || {
-    err "Failed to fetch repository tree from GitHub"
-    exit 1
+    err "Failed to fetch repository tree from GitHub"; exit 1
   }
-
-  # Extract paths matching skills/**/SKILL.md
   local skill_paths
   skill_paths=$(echo "$tree_response" | grep -o '"path":"skills/[^"]*SKILL\.md"' | sed 's/"path":"//;s/"//' | sort)
-
-  if [[ -z "$skill_paths" ]]; then
-    err "No skills found in the remote catalog"
-    exit 1
-  fi
+  [[ -z "$skill_paths" ]] && { err "No skills found in the remote catalog"; exit 1; }
 
   while IFS= read -r remote_path; do
     local content name version description category
-
-    # Fetch the raw file content
-    content=$(curl -fsSL "${RAW_BASE}/${remote_path}" 2>/dev/null) || {
-      warn "Failed to fetch $remote_path"
-      continue
-    }
-
+    content=$(curl -fsSL "${RAW_BASE}/${remote_path}" 2>/dev/null) || continue
     name="$(parse_field_from_content "$content" "name")"
+    [[ -z "$name" ]] && continue
     version="$(parse_field_from_content "$content" "version")"
     description="$(parse_field_from_content "$content" "description")"
-
-    # Extract category: skills/<category>/<name>/SKILL.md
     category="$(echo "$remote_path" | cut -d'/' -f2)"
-
-    if [[ -z "$name" ]]; then
-      warn "Skipping $remote_path — missing name field"
-      continue
-    fi
-
-    SKILL_PATHS+=("$remote_path")
-    SKILL_NAMES+=("$name")
-    SKILL_VERSIONS+=("${version:-0.0.0}")
-    SKILL_DESCRIPTIONS+=("${description:-No description}")
-    SKILL_CATEGORIES+=("$category")
+    printf '%s\t%s\t%s\t%s\t%s\n' "$name" "${version:-0.0.0}" "$category" "${description:-No description}" "$remote_path"
   done <<< "$skill_paths"
 }
 
-scan_skills() {
-  SKILL_PATHS=()
-  SKILL_NAMES=()
-  SKILL_VERSIONS=()
-  SKILL_DESCRIPTIONS=()
-  SKILL_CATEGORIES=()
-
+build_catalog() {
   if [[ "$LOCAL_MODE" == true ]]; then
-    scan_skills_local
+    build_catalog_local
   else
-    scan_skills_remote
-  fi
-
-  if [[ ${#SKILL_NAMES[@]} -eq 0 ]]; then
-    err "No skills found"
-    exit 1
+    build_catalog_remote
   fi
 }
 
-# ─── Installation ────────────────────────────────────────────────────────────
+# ─── Installation helpers ────────────────────────────────────────────────────
 
-install_skill_local() {
-  local index="$1"
-  local name="${SKILL_NAMES[$index]}"
-  local version="${SKILL_VERSIONS[$index]}"
-  local source_dir
-  source_dir="$(dirname "${SKILL_PATHS[$index]}")"
-  local target="$INSTALL_DIR/$name"
-
+install_one_local() {
+  local name="$1" path="$2" version="$3"
+  local source_dir target
+  source_dir="$(dirname "$path")"
+  target="$INSTALL_DIR/$name"
   mkdir -p "$target"
   cp -r "$source_dir"/* "$target"/
   ok "Installed ${BOLD}$name${NC} v$version → $target"
 }
 
-install_skill_remote() {
-  local index="$1"
-  local name="${SKILL_NAMES[$index]}"
-  local version="${SKILL_VERSIONS[$index]}"
-  local remote_path="${SKILL_PATHS[$index]}"
-  local remote_dir
+install_one_remote() {
+  local name="$1" remote_path="$2" version="$3"
+  local remote_dir target
   remote_dir="$(dirname "$remote_path")"
-  local target="$INSTALL_DIR/$name"
-
+  target="$INSTALL_DIR/$name"
   mkdir -p "$target"
 
-  # Fetch the SKILL.md
   curl -fsSL "${RAW_BASE}/${remote_path}" -o "$target/SKILL.md" 2>/dev/null || {
-    err "Failed to download $name"
-    return 1
+    err "Failed to download $name"; return 1
   }
 
-  # Check for additional files in the skill directory via the tree API
-  local tree_response
+  # Fetch any supplementary files
+  local tree_response extra_files
   tree_response=$(curl -fsSL "${API_BASE}/git/trees/${BRANCH}?recursive=1" 2>/dev/null) || true
-
-  local extra_files
   extra_files=$(echo "$tree_response" | grep -o "\"path\":\"${remote_dir}/[^\"]*\"" | sed 's/"path":"//;s/"//' | grep -v "SKILL\.md$" || true)
-
   while IFS= read -r extra_path; do
     [[ -z "$extra_path" ]] && continue
     local filename="${extra_path#"$remote_dir/"}"
-    local target_subdir="$target/$(dirname "$filename")"
-    mkdir -p "$target_subdir"
-    curl -fsSL "${RAW_BASE}/${extra_path}" -o "$target/$filename" 2>/dev/null || {
-      warn "Failed to download supplementary file: $filename"
-    }
+    mkdir -p "$target/$(dirname "$filename")"
+    curl -fsSL "${RAW_BASE}/${extra_path}" -o "$target/$filename" 2>/dev/null || true
   done <<< "$extra_files"
 
   ok "Installed ${BOLD}$name${NC} v$version → $target"
 }
 
-install_skill() {
+install_one() {
   if [[ "$LOCAL_MODE" == true ]]; then
-    install_skill_local "$1"
+    install_one_local "$@"
   else
-    install_skill_remote "$1"
+    install_one_remote "$@"
   fi
 }
 
 # ─── Commands ────────────────────────────────────────────────────────────────
 
 cmd_list() {
-  scan_skills
+  local catalog
+  catalog="$(build_catalog)"
+  [[ -z "$catalog" ]] && { err "No skills found"; exit 1; }
 
   printf "\n${BOLD}%-20s %-12s %-10s %s${NC}\n" "NAME" "CATEGORY" "VERSION" "DESCRIPTION"
   printf "%-20s %-12s %-10s %s\n" "────────────────────" "────────────" "──────────" "────────────────────────────────────────"
 
-  for i in "${!SKILL_NAMES[@]}"; do
+  while IFS=$'\t' read -r name version category description path; do
     local installed=""
-    if [[ -f "$INSTALL_DIR/${SKILL_NAMES[$i]}/SKILL.md" ]]; then
-      installed=" ${GREEN}(installed)${NC}"
-    fi
-    printf "%-20s %-12s %-10s %s${installed}\n" \
-      "${SKILL_NAMES[$i]}" \
-      "${SKILL_CATEGORIES[$i]}" \
-      "${SKILL_VERSIONS[$i]}" \
-      "${SKILL_DESCRIPTIONS[$i]:0:50}"
-  done
+    [[ -f "$INSTALL_DIR/$name/SKILL.md" ]] && installed=" ${GREEN}(installed)${NC}"
+    printf "%-20s %-12s %-10s %s${installed}\n" "$name" "$category" "$version" "${description:0:50}"
+  done <<< "$catalog"
   echo ""
 }
 
 cmd_uninstall() {
   local name="$1"
   local target="$INSTALL_DIR/$name"
-
-  if [[ ! -d "$target" ]]; then
-    err "Skill '$name' is not installed at $target"
-    exit 1
-  fi
-
+  [[ ! -d "$target" ]] && { err "Skill '$name' is not installed at $target"; exit 1; }
   rm -rf "$target"
   ok "Uninstalled skill '$name'"
 }
 
 cmd_install_all() {
-  scan_skills
+  local catalog
+  catalog="$(build_catalog)"
+  [[ -z "$catalog" ]] && { err "No skills found"; exit 1; }
   mkdir -p "$INSTALL_DIR"
 
-  info "Installing all ${#SKILL_NAMES[@]} skills..."
-  echo ""
+  local count=0
+  while IFS=$'\t' read -r name version category description path; do
+    install_one "$name" "$path" "$version"
+    ((count++))
+  done <<< "$catalog"
 
-  for i in "${!SKILL_NAMES[@]}"; do
-    install_skill "$i"
-  done
-
   echo ""
-  ok "All skills installed to $INSTALL_DIR"
+  ok "Installed $count skill(s) to $INSTALL_DIR"
 }
 
 cmd_interactive() {
-  if ! check_gum; then
-    install_gum
-    if ! check_gum; then
-      exit 1
+  # Check Python 3 is available
+  local python_cmd=""
+  for cmd in python3 python; do
+    if command -v "$cmd" &>/dev/null && "$cmd" -c "import sys; assert sys.version_info >= (3, 6)" 2>/dev/null; then
+      python_cmd="$cmd"
+      break
     fi
+  done
+  if [[ -z "$python_cmd" ]]; then
+    err "Python 3.6+ is required for the interactive installer."
+    echo "  Use --list and --all for non-interactive mode."
+    exit 1
   fi
 
-  scan_skills
+  # Build catalog TSV
+  local catalog
+  catalog="$(build_catalog)"
+  [[ -z "$catalog" ]] && { err "No skills found"; exit 1; }
 
-  # Build display lines for gum filter
-  local options=()
-  for i in "${!SKILL_NAMES[@]}"; do
-    local installed=""
-    if [[ -f "$INSTALL_DIR/${SKILL_NAMES[$i]}/SKILL.md" ]]; then
-      installed=" [installed]"
-    fi
-    options+=("$(printf "%-20s  %-12s  v%-8s  %s%s" \
-      "${SKILL_NAMES[$i]}" \
-      "${SKILL_CATEGORIES[$i]}" \
-      "${SKILL_VERSIONS[$i]}" \
-      "${SKILL_DESCRIPTIONS[$i]:0:45}" \
-      "$installed")")
-  done
-
-  # Header
-  gum style \
-    --border rounded \
-    --border-foreground 212 \
-    --padding "1 2" \
-    --margin "1 0" \
-    "🛠  elastic-docs-skills installer" \
-    "" \
-    "Select skills to install (use TAB to select, ENTER to confirm)"
-
-  # Multi-select with gum filter
+  # Launch Python curses TUI, passing catalog via env, get selected names back
   local selected
-  selected=$(printf '%s\n' "${options[@]}" | gum filter --no-limit --height 20 --placeholder "Type to filter skills...") || true
+  selected=$(CATALOG="$catalog" "$python_cmd" -c '
+import curses
+import sys
+import os
+
+def main(stdscr):
+    curses.curs_set(0)
+    curses.use_default_colors()
+    curses.start_color()
+    curses.init_pair(1, curses.COLOR_CYAN, -1)     # header/title
+    curses.init_pair(2, curses.COLOR_GREEN, -1)     # selected marker
+    curses.init_pair(3, curses.COLOR_YELLOW, -1)    # installed tag
+    curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_BLUE)  # cursor highlight
+    curses.init_pair(5, curses.COLOR_MAGENTA, -1)   # summary
+
+    install_dir = os.path.expanduser("~/.claude/skills")
+
+    # Parse catalog from env
+    catalog_raw = os.environ.get("CATALOG", "")
+    items = []
+    for line in catalog_raw.strip().split("\n"):
+        if not line.strip():
+            continue
+        parts = line.split("\t")
+        if len(parts) >= 5:
+            name, version, category, description, path = parts[0], parts[1], parts[2], parts[3], parts[4]
+            installed = os.path.isfile(os.path.join(install_dir, name, "SKILL.md"))
+            items.append({
+                "name": name,
+                "version": version,
+                "category": category,
+                "description": description,
+                "path": path,
+                "installed": installed,
+                "selected": False,
+            })
+
+    if not items:
+        return ""
+
+    cursor = 0
+    scroll_offset = 0
+    filter_text = ""
+
+    def get_filtered():
+        if not filter_text:
+            return list(range(len(items)))
+        ft = filter_text.lower()
+        return [i for i, it in enumerate(items)
+                if ft in it["name"].lower()
+                or ft in it["category"].lower()
+                or ft in it["description"].lower()]
+
+    while True:
+        stdscr.clear()
+        max_y, max_x = stdscr.getmaxyx()
+        filtered = get_filtered()
+
+        # Title
+        title = " elastic-docs-skills installer "
+        stdscr.attron(curses.color_pair(1) | curses.A_BOLD)
+        stdscr.addnstr(0, max(0, (max_x - len(title)) // 2), title, max_x - 1)
+        stdscr.attroff(curses.color_pair(1) | curses.A_BOLD)
+
+        # Help line
+        help_text = "SPACE=toggle  ENTER=install  /=filter  a=all  n=none  q=quit"
+        stdscr.addnstr(1, max(0, (max_x - len(help_text)) // 2), help_text, max_x - 1)
+
+        # Filter bar
+        if filter_text:
+            filter_display = f" Filter: {filter_text}_ "
+        else:
+            filter_display = " Type / to filter "
+        stdscr.addnstr(2, 0, filter_display, max_x - 1, curses.color_pair(1))
+
+        # Column header
+        header_y = 3
+        hdr = f"  {'':3s} {'NAME':<20s} {'CATEGORY':<12s} {'VERSION':<10s} DESCRIPTION"
+        stdscr.attron(curses.A_BOLD)
+        stdscr.addnstr(header_y, 0, hdr[:max_x - 1], max_x - 1)
+        stdscr.attroff(curses.A_BOLD)
+
+        # Separator
+        stdscr.addnstr(header_y + 1, 0, "─" * min(max_x - 1, 80), max_x - 1)
+
+        # List area
+        list_start_y = header_y + 2
+        list_height = max_y - list_start_y - 2  # reserve 2 lines at bottom
+        if list_height < 1:
+            list_height = 1
+
+        # Adjust scroll
+        if cursor < scroll_offset:
+            scroll_offset = cursor
+        if cursor >= scroll_offset + list_height:
+            scroll_offset = cursor - list_height + 1
+
+        for row_idx in range(list_height):
+            fi = scroll_offset + row_idx
+            if fi >= len(filtered):
+                break
+            item_idx = filtered[fi]
+            item = items[item_idx]
+
+            marker = "[x]" if item["selected"] else "[ ]"
+            tag = " *" if item["installed"] else ""
+            line = f"  {marker} {item['name']:<20s} {item['category']:<12s} v{item['version']:<9s} {item['description'][:max_x - 55]}{tag}"
+
+            y = list_start_y + row_idx
+            if y >= max_y - 2:
+                break
+
+            if fi == cursor:
+                stdscr.attron(curses.color_pair(4))
+                stdscr.addnstr(y, 0, line[:max_x - 1].ljust(max_x - 1), max_x - 1)
+                stdscr.attroff(curses.color_pair(4))
+            elif item["selected"]:
+                stdscr.attron(curses.color_pair(2))
+                stdscr.addnstr(y, 0, line[:max_x - 1], max_x - 1)
+                stdscr.attroff(curses.color_pair(2))
+            else:
+                stdscr.addnstr(y, 0, line[:max_x - 1], max_x - 1)
+
+        # Status bar
+        selected_count = sum(1 for it in items if it["selected"])
+        status = f" {selected_count} selected | {len(filtered)}/{len(items)} skills | * = installed "
+        status_y = max_y - 1
+        stdscr.attron(curses.color_pair(5) | curses.A_BOLD)
+        stdscr.addnstr(status_y, 0, status[:max_x - 1], max_x - 1)
+        stdscr.attroff(curses.color_pair(5) | curses.A_BOLD)
+
+        stdscr.refresh()
+        key = stdscr.getch()
+
+        if key == ord("q") or key == 27:  # q or ESC
+            return ""
+        elif key == ord("\n") or key == curses.KEY_ENTER or key == 10 or key == 13:
+            selected_names = [it["name"] for it in items if it["selected"]]
+            return "\n".join(selected_names)
+        elif key == curses.KEY_UP or key == ord("k"):
+            if cursor > 0:
+                cursor -= 1
+        elif key == curses.KEY_DOWN or key == ord("j"):
+            if cursor < len(filtered) - 1:
+                cursor += 1
+        elif key == ord(" "):
+            if filtered:
+                idx = filtered[cursor]
+                items[idx]["selected"] = not items[idx]["selected"]
+                if cursor < len(filtered) - 1:
+                    cursor += 1
+        elif key == ord("a"):
+            for fi in filtered:
+                items[fi]["selected"] = True
+        elif key == ord("n"):
+            for fi in filtered:
+                items[fi]["selected"] = False
+        elif key == ord("/"):
+            # Enter filter mode
+            filter_text = ""
+            cursor = 0
+            scroll_offset = 0
+            stdscr.nodelay(False)
+            while True:
+                # Redraw filter bar
+                if filter_text:
+                    fd = f" Filter: {filter_text}_ (ESC to clear) "
+                else:
+                    fd = " Filter: _ (type to search, ESC to clear) "
+                stdscr.addnstr(2, 0, fd[:max_x - 1].ljust(max_x - 1), max_x - 1, curses.color_pair(1))
+                stdscr.refresh()
+                fk = stdscr.getch()
+                if fk == 27:  # ESC
+                    filter_text = ""
+                    cursor = 0
+                    scroll_offset = 0
+                    break
+                elif fk == ord("\n") or fk == 10 or fk == 13:
+                    cursor = 0
+                    scroll_offset = 0
+                    break
+                elif fk == curses.KEY_BACKSPACE or fk == 127 or fk == 8:
+                    filter_text = filter_text[:-1]
+                    cursor = 0
+                    scroll_offset = 0
+                elif 32 <= fk <= 126:
+                    filter_text += chr(fk)
+                    cursor = 0
+                    scroll_offset = 0
+
+result = curses.wrapper(main)
+if result:
+    print(result)
+' <<< "" 2>/dev/null) || true
 
   if [[ -z "$selected" ]]; then
+    echo ""
     warn "No skills selected."
     exit 0
   fi
@@ -373,26 +428,20 @@ cmd_interactive() {
   echo ""
   mkdir -p "$INSTALL_DIR"
 
-  # Match selections back to skill indices and install
   local count=0
-  while IFS= read -r line; do
-    local selected_name
-    selected_name="$(echo "$line" | awk '{print $1}')"
-
-    for i in "${!SKILL_NAMES[@]}"; do
-      if [[ "${SKILL_NAMES[$i]}" == "$selected_name" ]]; then
-        install_skill "$i"
+  while IFS= read -r selected_name; do
+    [[ -z "$selected_name" ]] && continue
+    while IFS=$'\t' read -r name version category description path; do
+      if [[ "$name" == "$selected_name" ]]; then
+        install_one "$name" "$path" "$version"
         ((count++))
         break
       fi
-    done
+    done <<< "$catalog"
   done <<< "$selected"
 
   echo ""
-  gum style \
-    --foreground 212 \
-    --bold \
-    "✓ Installed $count skill(s) to $INSTALL_DIR"
+  ok "Installed $count skill(s) to $INSTALL_DIR"
 }
 
 # ─── Main ────────────────────────────────────────────────────────────────────
