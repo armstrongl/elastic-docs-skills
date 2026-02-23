@@ -1,32 +1,109 @@
-# AGENTS.md file for Elastic documentation
+# elastic-docs-skills
 
-This repository contains comprehensive instructions for AI agents responsible for authoring and maintaining Elastic documentation.
+A catalog of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills for Elastic documentation workflows.
 
-For more information, refer to [AGENTS.md](AGENTS.md).
+Browse the catalog, pick the skills you need, and install them with a single command.
 
-## Purpose
+## Quick start
 
-The `AGENTS.md` file serves as a comprehensive guide that AI agents must follow when working with Elastic documentation. It ensures consistency, accessibility, and adherence to Elastic's documentation standards across all content.
+```bash
+git clone https://github.com/elastic/elastic-docs-skills.git
+cd elastic-docs-skills
+./install.sh
+```
 
-## What's in AGENTS.md
+This launches an interactive TUI (powered by [gum](https://github.com/charmbracelet/gum)) where you can select which skills to install.
 
-The file covers essential topics including:
+### Other install options
 
-- Core principles of Elastic documentation (cumulative docs, voice/tone, accessibility)
-- The `docs-builder` system and how to structure content correctly
-- Substitutions (e.g., `{{edot}}`, `{{ess}}`) and when to use them
-- Comments using `%` syntax and their importance for maintenance
-- Content organization components:
-  - Dropdowns for progressive disclosure
-  - Tabs for variant instructions
-  - Stepper components for complex procedures
-- Linking strategies with absolute paths for better maintainability
-- The `applies_to` mechanism for version-specific content filtering
-- Style and formatting guidelines for consistent presentation
-- Handling urgent updates and complex version scenarios
+```bash
+./install.sh --list          # List all available skills
+./install.sh --all           # Install everything
+./install.sh --uninstall NAME  # Remove an installed skill
+```
 
-## How to use
+Skills are installed to `~/.claude/skills/` so they're available in all your projects.
 
-The idea behind an AGENTS.md file is that it's always available as workspace / repo context. Place it in the root of your repository and rename it accordingly to your LLM agent preferences (for example, Claude Code uses `CLAUDE.md`). Most agents are now following the `AGENTS.md` convention.
+## Skill catalog
 
-Before starting an agentic session, ask the agent if it's aware of the file and its contents. You can also upload the file manually as context.
+| Name | Category | Version | Description |
+|------|----------|---------|-------------|
+| `create-skill` | workflow | 1.0.0 | Interactively create a new Claude Code skill and add it to the catalog |
+
+## Creating new skills
+
+The easiest way to add a skill is to use the `create-skill` skill itself:
+
+```
+/create-skill my-new-skill
+```
+
+This walks you through the process interactively and can open a PR for you.
+
+### Manual creation
+
+1. Create a directory under `skills/<category>/<skill-name>/`
+2. Add a `SKILL.md` file with the required frontmatter
+3. Open a PR
+
+### SKILL.md frontmatter schema
+
+Every skill must have YAML frontmatter with at least these fields:
+
+```yaml
+---
+name: my-skill              # Required — kebab-case, must match directory name
+version: 1.0.0              # Required — SemVer (MAJOR.MINOR.PATCH)
+description: What it does    # Required — when to use this skill
+---
+```
+
+Optional fields:
+
+```yaml
+disable-model-invocation: true   # Only runs via /my-skill, not auto-triggered
+argument-hint: [args]            # Hint shown in autocomplete
+allowed-tools: Read, Grep        # Tools the skill can use without asking
+context: fork                    # Run in isolated subagent
+agent: Explore                   # Subagent type
+```
+
+## Versioning
+
+Skills follow [SemVer](https://semver.org/):
+
+- **MAJOR** — Breaking changes to the skill's behavior or interface
+- **MINOR** — New functionality, backwards-compatible
+- **PATCH** — Bug fixes, wording improvements
+
+Bump the `version` field in your `SKILL.md` frontmatter when making changes.
+
+## CI validation
+
+All PRs are validated by GitHub Actions (`.github/workflows/validate-skills.yml`):
+
+- Every `skills/**/SKILL.md` must have valid YAML frontmatter
+- Required fields: `name`, `description`, `version`
+- `version` must be valid SemVer
+- Directory name must match the `name` field
+
+## Repository structure
+
+```
+elastic-docs-skills/
+├── .github/workflows/        # CI validation
+├── .claude/skills/            # Skills that work within this repo
+├── skills/                    # The browsable catalog
+│   └── <category>/
+│       └── <skill-name>/
+│           └── SKILL.md
+├── install.sh                 # Interactive TUI installer
+└── README.md
+```
+
+## Contributing
+
+1. Fork and clone this repository
+2. Create a skill using `/create-skill` or manually
+3. Ensure your `SKILL.md` has all required frontmatter fields
+4. Open a PR — CI will validate your skill automatically
