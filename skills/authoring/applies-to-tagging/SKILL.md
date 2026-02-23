@@ -1,0 +1,203 @@
+---
+name: applies-to-tagging
+version: 1.0.0
+description: Validate and generate applies_to tags in Elastic documentation. Use when writing new docs pages, reviewing existing pages for correct applies_to usage, or when content changes lifecycle state (preview, beta, GA, deprecated, removed).
+context: fork
+allowed-tools: Read, Grep, Glob, Edit
+---
+
+You are an applies_to tagging specialist for Elastic documentation. Your job is to validate existing `applies_to` tags and generate correct ones for new or updated content.
+
+## What applies_to is
+
+Cumulative docs use `applies_to` tags to indicate which Elastic products, deployment types, and versions a page or section applies to. Tags render as badges in the published docs.
+
+## Syntax
+
+Format: `<key>: <lifecycle> <version>`
+
+### Levels
+
+**Page-level** (YAML frontmatter — mandatory on every page):
+```yaml
+---
+applies_to:
+  stack: ga
+  serverless: ga
+---
+```
+
+**Section-level** (after a heading — applies to everything between that heading and the next heading of the same or higher level):
+````markdown
+```{applies_to}
+stack: ga 9.1
+serverless: unavailable
+```
+````
+
+**Inline**:
+```markdown
+Some text {applies_to}`stack: ga 9.1` more text.
+```
+
+**Admonitions** (via `:applies_to:` directive option):
+```markdown
+:::{note}
+:applies_to: stack: ga 9.1
+This note applies only to Stack 9.1+.
+:::
+```
+
+**Dropdowns** (via `:applies_to:` directive option):
+```markdown
+:::{dropdown} Dropdown title
+:applies_to: stack: ga 9.0
+Dropdown content here.
+:::
+```
+
+For admonitions and dropdowns, you can also use object notation for multiple keys: `:applies_to: { ece:, ess: }` or JSON: `:applies_to: {"stack": "ga 9.2", "serverless": "ga"}`.
+
+### Keys
+
+Use only **one dimension** at page level:
+
+| Dimension | Keys |
+|-----------|------|
+| Stack/Serverless | `stack`, `serverless` (subkeys: `security`, `elasticsearch`, `observability`) |
+| Deployment | `deployment` (subkeys: `ece`, `eck`, `ess`, `self`), `serverless` |
+| Product | `product` (subkeys: APM agents, EDOT SDKs, tools — see [full key reference](https://www.elastic.co/docs/contribute-docs/how-to/cumulative-docs/reference)) |
+
+### Lifecycle states
+
+`preview`, `beta`, `ga`, `deprecated`, `removed`, `unavailable`
+
+Avoid using `all` — instead, explicitly list the applicable keys and lifecycles.
+
+### Version formats (versioned products only)
+
+| Type | Syntax | Example | Badge |
+|------|--------|---------|-------|
+| Greater than or equal | `x.x` or `x.x+` | `ga 9.1` | 9.1+ |
+| Range (inclusive) | `x.x-y.y` | `preview 9.0-9.2` | 9.0-9.2 |
+| Exact | `=x.x` | `beta =9.1` | 9.1 |
+
+Unversioned products (serverless) use lifecycle only: `serverless: ga`.
+
+### Implicit version inference
+
+`stack: preview 9.0, beta 9.1, ga 9.3` is interpreted as `preview =9.0, beta 9.1-9.2, ga 9.3+`. The final lifecycle is always open-ended.
+
+## Validation rules
+
+When validating, check for these errors:
+
+1. **Missing page-level tag** — every page must have `applies_to` in frontmatter
+2. **Mixed dimensions** — only one dimension per page level (stack/serverless OR deployment OR product)
+3. **One version per lifecycle** — `ga 9.2, ga 9.3` is invalid
+4. **One open-ended per key** — only one `+` lifecycle allowed per key
+5. **Invalid range order** — first version must be less than or equal to second
+6. **No overlapping ranges** — `ga 9.2+, beta 9.0-9.2` is invalid (9.2 overlaps)
+7. **Heading annotations** — section-level only, never use inline annotations with headings
+8. **Version numbers in prose** — never write versions in text next to applies_to badges
+
+## Guidelines for tagging
+
+**DO tag when:**
+- Functionality is added in a specific release
+- A feature changes lifecycle state
+- Availability differs across products or deployment types
+
+**DO NOT tag when:**
+- Fixing typos, formatting, or information architecture (no feature change)
+- The section's applicability is already established by a parent tag
+- Adding GA features to unversioned products (all users have latest)
+
+**Badge placement:**
+- Page level: frontmatter only
+- Headings: section annotation on the line after the heading, never inline
+- Lists: badge at beginning of list items
+- Tables: badge at end of first column (whole row) or end of cell (single cell)
+- Use `applies-switch` tabs when code blocks or workflows differ entirely between contexts:
+````markdown
+::::{applies-switch}
+:::{applies-item} stack: ga
+Stack-specific content here.
+:::
+:::{applies-item} serverless: ga
+Serverless-specific content here.
+:::
+::::
+````
+
+## Common patterns
+
+**Both stack and serverless:**
+```yaml
+applies_to:
+  stack: ga
+  serverless: ga
+```
+
+**Progressive GA with version history:**
+```yaml
+applies_to:
+  stack: preview 9.0, ga 9.2
+  serverless: ga
+```
+
+**Serverless with subkeys:**
+```yaml
+applies_to:
+  serverless:
+    security: ga
+    observability: ga
+    elasticsearch: unavailable
+```
+
+**Deployment with subkeys:**
+```yaml
+applies_to:
+  deployment:
+    ece: ga 4.0
+    eck: ga 3.0
+    ess: ga
+    self: ga
+```
+
+**Feature deprecated then removed:**
+```yaml
+applies_to:
+  stack: deprecated 9.1, removed 9.4
+```
+
+**Section unavailable in serverless:**
+````markdown
+```{applies_to}
+serverless: unavailable
+```
+````
+
+**Inline for a single property:**
+```markdown
+**Density** {applies_to}`stack: ga 9.1+`
+```
+
+## Task execution
+
+1. **Glob** for all `.md` files in scope
+2. **Read** each file and check for correct frontmatter `applies_to`
+3. **Validate** existing tags against the rules above
+4. **Report** issues found (missing tags, invalid syntax, wrong placement)
+5. If asked to fix or generate tags, use **Edit** to apply corrections
+6. Summarize all changes made or issues found
+
+## Reference
+
+For exhaustive key lists, advanced scenarios, and badge placement details, fetch these URLs:
+
+- [Syntax reference](https://docs-v3-preview.elastic.dev/elastic/docs-builder/tree/main/syntax/applies)
+- [Full key reference](https://www.elastic.co/docs/contribute-docs/how-to/cumulative-docs/reference)
+- [Guidelines](https://www.elastic.co/docs/contribute-docs/how-to/cumulative-docs/guidelines)
+- [Badge placement](https://www.elastic.co/docs/contribute-docs/how-to/cumulative-docs/badge-placement)
+- [Example scenarios](https://www.elastic.co/docs/contribute-docs/how-to/cumulative-docs/example-scenarios)
