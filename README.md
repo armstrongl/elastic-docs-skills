@@ -37,15 +37,9 @@ cd elastic-docs-skills
 
 Skills are installed to `~/.claude/skills/` so they're available in all your projects.
 
-## Skill catalog
-
-| Name | Category | Version | Description |
-|------|----------|---------|-------------|
-| `create-skill` | workflow | 1.0.0 | Interactively create a new Claude Code skill and add it to the catalog |
-
 ## Creating new skills
 
-The easiest way to add a skill is to use the `create-skill` skill itself:
+If you have this repo cloned, the easiest way to add a skill is to use the built-in `/create-skill` command (available only within this repo):
 
 ```
 /create-skill my-new-skill
