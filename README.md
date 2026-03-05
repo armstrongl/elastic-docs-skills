@@ -74,7 +74,7 @@ This compares your installed skill versions against the catalog and updates any 
 
 ## CI validation
 
-All PRs are validated by GitHub Actions (`.github/workflows/validate-skills.yml`):
+All PRs that touch `skills/**` are validated by GitHub Actions using [`skill-validator`](https://github.com/agent-ecosystem/skill-validator). The workflow (`.github/workflows/validate-skills.yml`) runs the following checks on every skill:
 
 - Every `skills/**/SKILL.md` must have valid YAML frontmatter
 - Required fields: `name`, `description`, `version`
@@ -86,13 +86,17 @@ All PRs are validated by GitHub Actions (`.github/workflows/validate-skills.yml`
 
 ```
 elastic-docs-skills/
-├── .github/workflows/        # CI validation
-├── .claude/skills/            # Skills that work within this repo
-├── skills/                    # The browsable catalog
+├── .github/
+│   ├── copilot-setup-steps.yml   # GitHub Copilot coding agent setup
+│   └── workflows/
+│       ├── validate-skills.yml   # Skill validation via skill-validator
+│       └── skill-freshness.lock.yml
+├── .claude/skills/               # Skills that work within this repo
+├── skills/                       # The browsable catalog
 │   └── <category>/
 │       └── <skill-name>/
 │           └── SKILL.md
-├── install.sh                 # Interactive TUI installer
+├── install.sh                    # Interactive TUI installer
 └── README.md
 ```
 
