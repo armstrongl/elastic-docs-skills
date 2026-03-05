@@ -76,6 +76,14 @@ Each command has a distinct role. Changes to one often require parallel changes 
 - `changelog gh-release` must produce output equivalent to running `changelog add` (per PR) followed by `changelog bundle`. Any change to either of those commands must be evaluated for `gh-release` too.
 - `changelog render` and the `{changelog}` directive share rendering logic. The directive is the primary consumer; `render` must be kept in parallel for as long as Asciidoc/Markdown output is needed for legacy docs.
 
+### Filter parity checklist (bundle and remove)
+
+When implementing a new filter mechanism (for example, `source: github_release`):
+
+1. Confirm that both `changelog bundle` and `changelog remove` support it with identical validation logic and error messages.
+2. Confirm that all forbidden-option guards in profile mode cover the new mechanism in both commands.
+3. Confirm that `ProfileFilterResolver` passes the result through to both `ChangelogBundlingService` and `ChangelogRemoveService` correctly.
+
 ## Invocation modes (bundle and remove)
 
 Two mutually exclusive modes:
@@ -84,6 +92,16 @@ Two mutually exclusive modes:
 - **Option-based mode** (`--all`, `--input-products`, `--prs`, `--issues`, `--report`, `--release-version`): exactly one filter must be provided. Profile arguments are not allowed.
 
 Profiles are a convenience wrapper — they make the same filters repeatable without CLI flags. The underlying behavior is identical.
+
+### Forbidden options in profile mode
+
+In profile mode the following options are **always forbidden** — all configuration comes from `changelog.yml`:
+
+- Filter options: `--all`, `--input-products`, `--prs`, `--issues`, `--release-version`, `--report`
+- Connection options: `--repo`, `--owner`
+- Output options: `--output`, `--directory`
+
+Any violation must emit an error that **names the specific offending options** (not a generic message listing every possible flag). Both `bundle` and `remove` must enforce the same list — verify both whenever this set changes.
 
 ## Config extension steps
 
@@ -113,6 +131,23 @@ Profile fields used during `remove`: `source`, `repo`, `owner`. Fields ignored d
 - Never hard-code lifecycle strings.
 
 See `docs/contribute/changelog.md#product-format` for valid values.
+
+### Changelog files are the authoritative source of product metadata
+
+When `--output-products` (option mode) or the `output_products` profile field is not explicitly set, the products array in the bundle is **always** assembled from the matched changelog files' own `products` fields — regardless of which filter was used to select those files.
+
+**Never auto-infer `output_products` from a release tag, repository name, or any external source.** This applies to all filter options (`--prs`, `--issues`, `--report`, `--all`, `--release-version`) and all profile types equally.
+
+The only legitimate exceptions are `changelog gh-release` and `changelog add`, which *create* new changelog files from scratch and embed product metadata directly into them as part of that creation step.
+
+### `{lifecycle}` inference source varies by profile type
+
+When `{lifecycle}` appears in a `products`, `output`, or `output_products` pattern, its source differs by profile type. This is intentional but must be documented clearly:
+
+- **Standard profiles** (all profile types except `source: github_release`): lifecycle is inferred from the version string the user passes as the second command argument, via `VersionLifecycleInference.InferLifecycle`.
+- **`source: github_release` profiles**: lifecycle is inferred from the **raw release tag** returned by GitHub, stored in `ProfileFilterResult.Lifecycle`. This must use the tag *before* `ExtractBaseVersion` strips the pre-release suffix, so `v9.2.0-beta.1` → `beta` (not `ga`).
+
+When adding a new profile type or a new pattern placeholder, define explicitly which input drives its value and document an inference table in the docs.
 
 ## Full test list
 
@@ -164,3 +199,4 @@ Per-feature checklist:
 - New profile field → add to "Profile configuration fields" in `changelog-bundle.md`; update "ignored fields" note in `changelog-remove.md`
 - Bundle schema change → update `changelog-bundle.md`, `docs/syntax/changelog.md`, and downstream command docs
 - Precedence chain → document explicitly in option description and contribute guide
+- **Fallback chain** for any option or field → document the full resolution order explicitly (for example: "CLI flag > profile field > bundle-level default > hardcoded default"). Use a table when there are more than two levels. **Never mark a field as "required" without first verifying that no fallback exists** in `ApplyConfigDefaults`, `ChangelogConfigurationLoader`, or the relevant service.
