@@ -69,6 +69,7 @@ Requires Python 3 (ships with macOS and most Linux distributions).
 Options:
   --list            List all available skills and exit
   --all             Install all skills (non-interactive)
+  --update          Update all installed skills to latest versions
   --uninstall NAME  Remove an installed skill
   --help            Show this help message
 
@@ -219,6 +220,57 @@ cmd_install_all() {
   ok "Installed $count skill(s) to $INSTALL_DIR"
 }
 
+cmd_update() {
+  local catalog
+  catalog="$(build_catalog)"
+  [[ -z "$catalog" ]] && { err "No skills found in catalog"; exit 1; }
+  mkdir -p "$INSTALL_DIR"
+
+  local updated=0 skipped=0 total=0
+
+  for installed_dir in "$INSTALL_DIR"/*/; do
+    [[ ! -d "$installed_dir" ]] && continue
+    local skill_name
+    skill_name="$(basename "$installed_dir")"
+    [[ ! -f "$installed_dir/SKILL.md" ]] && continue
+
+    ((total++))
+
+    local installed_version
+    installed_version="$(parse_field "$installed_dir/SKILL.md" "version")"
+    [[ -z "$installed_version" ]] && installed_version="0.0.0"
+
+    local found=false
+    while IFS=$'\t' read -r name version category description path; do
+      if [[ "$name" == "$skill_name" ]]; then
+        found=true
+        if [[ "$version" == "$installed_version" ]]; then
+          ((skipped++))
+        else
+          install_one "$name" "$path" "$version"
+          info "  Updated from v$installed_version"
+          ((updated++))
+        fi
+        break
+      fi
+    done <<< "$catalog"
+
+    if [[ "$found" == false ]]; then
+      warn "Skill '$skill_name' is installed but not found in the catalog"
+      ((skipped++))
+    fi
+  done
+
+  echo ""
+  if [[ $total -eq 0 ]]; then
+    warn "No skills are currently installed at $INSTALL_DIR"
+  elif [[ $updated -eq 0 ]]; then
+    ok "All $total installed skill(s) are up to date"
+  else
+    ok "Updated $updated skill(s), $skipped already up to date"
+  fi
+}
+
 cmd_interactive() {
   # Check Python 3 is available
   local python_cmd=""
@@ -324,6 +376,9 @@ main() {
       ;;
     --list)
       cmd_list
+      ;;
+    --update)
+      cmd_update
       ;;
     --all)
       cmd_install_all

@@ -22,45 +22,35 @@ under the License. -->
 
 You are a freshness checker for the elastic-docs-skills catalog. Your job is to compare each skill file against its upstream source URLs and update skills that have drifted.
 
-## Finding skills
+## Finding skills and their sources
 
 Skill files live at `skills/**/SKILL.md`. Each skill has a YAML frontmatter block and a Markdown body encoding rules, syntax, or workflows derived from upstream Elastic documentation.
 
-## Source URLs per skill
+Source URLs are declared in each skill's YAML frontmatter under the `sources:` field:
 
-### applies-to-tagging (`skills/authoring/applies-to-tagging/SKILL.md`)
+```yaml
+---
+name: my-skill
+sources:
+  - https://www.elastic.co/docs/some-page
+  - https://docs-v3-preview.elastic.dev/some/other/page
+---
+```
 
-- [Syntax reference](https://docs-v3-preview.elastic.dev/elastic/docs-builder/tree/main/syntax/applies)
-- [Full key reference](https://www.elastic.co/docs/contribute-docs/how-to/cumulative-docs/reference)
-- [Guidelines](https://www.elastic.co/docs/contribute-docs/how-to/cumulative-docs/guidelines)
-- [Badge placement](https://www.elastic.co/docs/contribute-docs/how-to/cumulative-docs/badge-placement)
-- [Example scenarios](https://www.elastic.co/docs/contribute-docs/how-to/cumulative-docs/example-scenarios)
+To find all skills and their sources:
 
-### docs-syntax-help (`skills/authoring/docs-syntax-help/SKILL.md`)
-
-- [Syntax quick reference](https://www.elastic.co/docs/contribute-docs/syntax-quick-reference)
-- [Detailed syntax guide](https://docs-v3-preview.elastic.dev/elastic/docs-builder/tree/main/syntax)
-
-### docs-check-style (`skills/review/docs-check-style/SKILL.md`)
-
-- [Style guide overview](https://www.elastic.co/docs/contribute-docs/style-guide)
-- [Voice and tone](https://www.elastic.co/docs/contribute-docs/style-guide/voice-tone)
-- [Accessibility](https://www.elastic.co/docs/contribute-docs/style-guide/accessibility)
-- [Grammar and spelling](https://www.elastic.co/docs/contribute-docs/style-guide/grammar-spelling)
-- [Word choice](https://www.elastic.co/docs/contribute-docs/style-guide/word-choice)
-- [Formatting](https://www.elastic.co/docs/contribute-docs/style-guide/formatting)
-- [UI writing](https://www.elastic.co/docs/contribute-docs/style-guide/ui-writing)
-
-### docs-retro (`skills/workflow/docs-retro/SKILL.md`)
-
-No upstream source URLs. This is an analysis skill, not reference-based. Skip during freshness checks.
+1. Find every `SKILL.md` file under the `skills/` directory.
+2. Parse the YAML frontmatter of each file.
+3. Read the `sources:` list. If a skill has no `sources:` field, use the Elastic Docs MCP server to discover relevant upstream content (see "Skills without explicit sources" below).
 
 ## How to check freshness
 
-For each skill that has source URLs:
+For each skill:
 
 1. **Read** the SKILL.md file completely
-2. **Fetch** each source URL listed above
+2. **Fetch** upstream content:
+   - If `sources:` exist: fetch each source URL (append `.md` to the URL for LLM-friendly versions)
+   - If no `sources:`: use the Elastic Docs MCP server (`https://www.elastic.co/docs/_mcp/`) — call `SemanticSearch` with the skill's name and description to find relevant upstream pages, then fetch the top results with `GetDocumentByUrl` (with `includeBody: true`)
 3. **Compare** the fetched content against what the skill encodes:
    - Are all rules from the upstream source present in the skill?
    - Has any syntax changed (new options, renamed directives, changed defaults)?
@@ -75,8 +65,8 @@ For each skill that has source URLs:
 
 When meaningful drift is found:
 
-1. **Preserve** the YAML frontmatter exactly (name, version, description, context, allowed-tools)
-2. **Bump** the version patch number (e.g., 1.0.0 → 1.0.1)
+1. **Preserve** the YAML frontmatter exactly (name, version, description, context, allowed-tools, sources)
+2. **Bump** the version patch number (e.g., 1.0.0 -> 1.0.1)
 3. **Edit** the Markdown body to reflect the upstream changes:
    - Add new rules or syntax patterns
    - Update changed syntax or options
@@ -92,10 +82,7 @@ If any skills were updated, open a PR with this body format:
 ## Skill freshness update — YYYY-MM-DD
 
 ### Skills checked
-- applies-to-tagging: [stale/current]
-- docs-syntax-help: [stale/current]
-- docs-check-style: [stale/current]
-- docs-retro: skipped (no upstream sources)
+- skill-name: [stale/current/skipped (no sources)]
 
 ### Changes made
 
@@ -115,8 +102,15 @@ If all skills are current, close the issue with a comment:
 ```
 All skills checked against upstream sources — no meaningful drift detected.
 
-- applies-to-tagging: current
-- docs-syntax-help: current
-- docs-check-style: current
-- docs-retro: skipped (no upstream sources)
+- skill-name: current
+- skill-name: current (sources discovered via MCP)
 ```
+
+## Skills without explicit sources
+
+When a skill has no `sources:` frontmatter, use the Elastic Docs MCP server at `https://www.elastic.co/docs/_mcp/` to find relevant upstream documentation:
+
+1. Call `SemanticSearch` with the skill's name and a brief summary of its purpose.
+2. Review the top results — pick pages that clearly correspond to the rules or syntax the skill encodes.
+3. Fetch each candidate page with `GetDocumentByUrl` (set `includeBody: true`) and compare against the skill.
+4. If meaningful drift is found, update the skill AND add the discovered URLs to its `sources:` frontmatter so future checks can use them directly.

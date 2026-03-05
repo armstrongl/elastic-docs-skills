@@ -50,6 +50,8 @@ argument-hint: [args]            # Hint shown in autocomplete
 allowed-tools: Read, Grep        # Tools the skill can use without asking
 context: fork                    # Run in isolated subagent
 agent: Explore                   # Subagent type
+sources:                         # Upstream URLs for freshness checks
+  - https://www.elastic.co/docs/...
 ```
 
 ## Versioning
@@ -62,16 +64,23 @@ Skills follow [SemVer](https://semver.org/):
 
 Bump the `version` field in your `SKILL.md` frontmatter when making changes.
 
+## Updating installed skills
+
+```bash
+./install.sh --update
+```
+
+This compares your installed skill versions against the catalog and updates any that have newer versions available.
+
 ## CI validation
 
 All PRs that touch `skills/**` are validated by GitHub Actions using [`skill-validator`](https://github.com/agent-ecosystem/skill-validator). The workflow (`.github/workflows/validate-skills.yml`) runs the following checks on every skill:
 
-- **Structure** — `SKILL.md` exists with valid YAML frontmatter and required fields
-- **Links** — all external URLs resolve successfully
-- **Content analysis** — word density, code block ratios, instruction specificity
-- **Contamination detection** — flags cross-language code examples that could confuse LLMs
-
-Results are posted as inline annotations on the PR and rendered in the Actions step summary. Warnings are non-blocking; only errors fail the check.
+- Every `skills/**/SKILL.md` must have valid YAML frontmatter
+- Required fields: `name`, `description`, `version`
+- `version` must be valid SemVer
+- Directory name must match the `name` field
+- `evals/evals.json` (if present) must be valid JSON with required structure
 
 ## Repository structure
 
@@ -93,10 +102,7 @@ elastic-docs-skills/
 
 ## Contributing
 
-1. Fork and clone this repository
-2. Create a skill using `/create-skill` or manually
-3. Ensure your `SKILL.md` has all required frontmatter fields
-4. Open a PR — CI will validate your skill automatically
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on creating skills, writing evals, choosing categories, and frontmatter conventions.
 
 ## License
 
