@@ -101,7 +101,7 @@ Avoid using `all` — instead, explicitly list the applicable keys and lifecycle
 
 | Type | Syntax | Example | Badge |
 |------|--------|---------|-------|
-| Greater than or equal | `x.x` or `x.x+` | `ga 9.1` | 9.1+ |
+| Greater than or equal | `x.x+` (preferred) or `x.x` | `ga 9.1+` | 9.1+ |
 | Range (inclusive) | `x.x-y.y` | `preview 9.0-9.2` | 9.0-9.2 |
 | Exact | `=x.x` | `beta =9.1` | 9.1 |
 
