@@ -5,6 +5,14 @@ description: Check documentation for Elastic style guide compliance using Vale l
 argument-hint: <file-or-directory>
 context: fork
 allowed-tools: Read, Grep, Glob, Bash(vale *), WebFetch
+sources:
+  - https://www.elastic.co/docs/contribute-docs/style-guide
+  - https://www.elastic.co/docs/contribute-docs/style-guide/voice-tone
+  - https://www.elastic.co/docs/contribute-docs/style-guide/accessibility
+  - https://www.elastic.co/docs/contribute-docs/style-guide/grammar-spelling
+  - https://www.elastic.co/docs/contribute-docs/style-guide/word-choice
+  - https://www.elastic.co/docs/contribute-docs/style-guide/formatting
+  - https://www.elastic.co/docs/contribute-docs/style-guide/ui-writing
 ---
 <!-- Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
 or more contributor license agreements. See the NOTICE file distributed with

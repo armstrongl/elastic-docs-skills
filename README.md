@@ -50,6 +50,8 @@ argument-hint: [args]            # Hint shown in autocomplete
 allowed-tools: Read, Grep        # Tools the skill can use without asking
 context: fork                    # Run in isolated subagent
 agent: Explore                   # Subagent type
+sources:                         # Upstream URLs for freshness checks
+  - https://www.elastic.co/docs/...
 ```
 
 ## Versioning
@@ -62,6 +64,14 @@ Skills follow [SemVer](https://semver.org/):
 
 Bump the `version` field in your `SKILL.md` frontmatter when making changes.
 
+## Updating installed skills
+
+```bash
+./install.sh --update
+```
+
+This compares your installed skill versions against the catalog and updates any that have newer versions available.
+
 ## CI validation
 
 All PRs are validated by GitHub Actions (`.github/workflows/validate-skills.yml`):
@@ -70,6 +80,7 @@ All PRs are validated by GitHub Actions (`.github/workflows/validate-skills.yml`
 - Required fields: `name`, `description`, `version`
 - `version` must be valid SemVer
 - Directory name must match the `name` field
+- `evals/evals.json` (if present) must be valid JSON with required structure
 
 ## Repository structure
 
@@ -87,10 +98,7 @@ elastic-docs-skills/
 
 ## Contributing
 
-1. Fork and clone this repository
-2. Create a skill using `/create-skill` or manually
-3. Ensure your `SKILL.md` has all required frontmatter fields
-4. Open a PR — CI will validate your skill automatically
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on creating skills, writing evals, choosing categories, and frontmatter conventions.
 
 ## License
 
