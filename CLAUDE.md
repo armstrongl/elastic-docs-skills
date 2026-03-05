@@ -56,6 +56,23 @@ Agentic workflows use `.md` files compiled to `.lock.yml` via `gh aw compile`. T
 
 Use `/create-skill` within this repo, or see `CONTRIBUTING.md` for manual instructions.
 
+## Elastic Docs MCP server
+
+The Elastic documentation site exposes a public MCP server at `https://www.elastic.co/docs/_mcp/` (no auth required). Use it for searching docs, fetching pages, and checking content freshness.
+
+Available tools:
+
+| Tool | Purpose |
+|------|---------|
+| `SemanticSearch` | Search all published Elastic docs by meaning. Supports product/section filters. |
+| `FindRelatedDocs` | Discover pages related to a topic. |
+| `GetDocumentByUrl` | Fetch a specific page by URL or path. Returns title, summaries, headings, and optionally the full body. |
+| `AnalyzeDocumentStructure` | Analyze heading count, link count, parent pages for a given URL. |
+| `CheckCoherence` | Check how coherently a topic is covered across all docs. |
+| `FindInconsistencies` | Find potential inconsistencies across pages covering the same topic. |
+
+Test with: `npx @modelcontextprotocol/inspector --url https://www.elastic.co/docs/_mcp/`
+
 ## Running CI locally
 
 ```bash

@@ -58,10 +58,11 @@ Check all skills in `skills/**/SKILL.md` for staleness against their upstream so
 1. Find every `SKILL.md` file under the `skills/` directory.
 2. For each skill:
    - Read the SKILL.md file.
-   - Parse the `sources:` list from its YAML frontmatter. If no `sources:` field exists, skip this skill.
-   - When fetching a source URL, always append `.md` to the URL (e.g. `https://www.elastic.co/docs/contribute-docs/style-guide` becomes `https://www.elastic.co/docs/contribute-docs/style-guide.md`). The `.md` variant returns an LLM-friendly markdown version of the page.
+   - Parse the `sources:` list from its YAML frontmatter.
+   - **If `sources:` exists**: fetch each source URL (append `.md` for the LLM-friendly variant, e.g. `https://www.elastic.co/docs/contribute-docs/style-guide.md`).
+   - **If no `sources:` field**: use the Elastic Docs MCP server (`https://www.elastic.co/docs/_mcp/`) to find relevant upstream content. Call `SemanticSearch` with the skill's name and description to discover related documentation pages. Then fetch the top results with `GetDocumentByUrl` (with `includeBody: true`) and compare them against the skill.
    - Compare the fetched content against the rules, syntax, and options encoded in the skill.
-   - If the skill is stale (new rules added, syntax changed, options removed, links broken), update the SKILL.md to reflect the current upstream state.
+   - If the skill is stale (new rules added, syntax changed, options removed, links broken), update the SKILL.md to reflect the current upstream state. If the skill lacked `sources:` and you found relevant upstream pages, add them to the frontmatter.
    - After updating a skill, run its evals to catch regressions (see "Post-update eval check" below).
 3. If any files changed, open a pull request summarizing what drifted, why, and eval results.
 4. If nothing changed, close this issue with a comment confirming all skills are current.
