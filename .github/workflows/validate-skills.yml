@@ -55,7 +55,56 @@ jobs:
             echo "" >> "$GITHUB_STEP_SUMMARY"
           done
 
-          if [[ $errors -ne 0 ]]; then
-            echo "::error::Skill validation failed with errors"
+            if [[ $errors -eq 0 ]]; then
+              echo "  ✓ Valid"
+            fi
+
+          done < <(find skills -name "SKILL.md" -type f 2>/dev/null | sort)
+
+          # Validate eval files
+          while IFS= read -r eval_file; do
+            echo "Checking $eval_file..."
+
+            # Validate JSON syntax
+            if ! python3 -m json.tool "$eval_file" > /dev/null 2>&1; then
+              echo "::error file=$eval_file::Invalid JSON"
+              ((errors++))
+              continue
+            fi
+
+            # Validate required structure
+            valid=$(python3 -c "
+          import json, sys
+          with open('$eval_file') as f:
+              data = json.load(f)
+          if 'evals' not in data:
+              print('missing_evals'); sys.exit()
+          for i, e in enumerate(data['evals']):
+              for field in ['id', 'prompt', 'expectations']:
+                  if field not in e:
+                      print(f'eval[{i}]_missing_{field}'); sys.exit()
+              if not isinstance(e['expectations'], list) or len(e['expectations']) == 0:
+                  print(f'eval[{i}]_empty_expectations'); sys.exit()
+          print('ok')
+          " 2>&1)
+
+            if [[ "$valid" == "ok" ]]; then
+              echo "  ✓ Valid"
+            elif [[ "$valid" == "missing_evals" ]]; then
+              echo "::error file=$eval_file::Missing required 'evals' array"
+              ((errors++))
+            else
+              echo "::error file=$eval_file::Invalid eval structure: $valid"
+              ((errors++))
+            fi
+
+          done < <(find skills -name "evals.json" -type f 2>/dev/null | sort)
+
+          if [[ $errors -gt 0 ]]; then
+            echo ""
+            echo "Found $errors validation error(s)"
             exit 1
           fi
+
+          echo ""
+          echo "All skills and evals validated successfully"

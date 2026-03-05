@@ -58,7 +58,7 @@ Check all skills in `skills/**/SKILL.md` for staleness against their upstream so
 1. Find every `SKILL.md` file under the `skills/` directory.
 2. For each skill:
    - Read the SKILL.md file.
-   - Identify every source URL in its reference/sources section.
+   - Parse the `sources:` list from its YAML frontmatter. If no `sources:` field exists, skip this skill.
    - When fetching a source URL, always append `.md` to the URL (e.g. `https://www.elastic.co/docs/contribute-docs/style-guide` becomes `https://www.elastic.co/docs/contribute-docs/style-guide.md`). The `.md` variant returns an LLM-friendly markdown version of the page.
    - Compare the fetched content against the rules, syntax, and options encoded in the skill.
    - If the skill is stale (new rules added, syntax changed, options removed, links broken), update the SKILL.md to reflect the current upstream state.
