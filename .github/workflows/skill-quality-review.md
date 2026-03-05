@@ -52,7 +52,7 @@ Review skills changed in this PR for quality issues and post a comment with find
 1. List the files changed in this PR. Identify every `SKILL.md` under `skills/`.
 2. For each changed skill, read the full `SKILL.md` file.
 3. Evaluate the skill against the criteria below.
-4. Post a single comment on the PR summarizing your findings across all changed skills. This is advisory only.
+4. Post a comment on the PR summarizing your findings across all changed skills, updating any existing comment from a previous run (see "Comment idempotency" below). This is advisory only.
 
 ## Evaluation criteria
 
@@ -117,3 +117,7 @@ Looks good — clear trigger, actionable instructions, appropriate scope.
 ```
 
 Do not nitpick formatting or stylistic preferences. Focus on issues that would affect the skill's effectiveness when used by an agent.
+
+## Comment idempotency
+
+Before posting, search existing PR comments for one that starts with `## Skill Quality Review`. If found, **update that comment** instead of creating a new one. This prevents duplicate comments on re-runs.

@@ -54,7 +54,7 @@ Run eval test cases against skills changed in this PR and report results.
 1. List files changed in this PR. Identify skills that were modified (any file under `skills/<category>/<skill-name>/`).
 2. For each changed skill, check if `evals/evals.json` exists in the skill directory.
 3. If evals exist, run the evaluation process below. If no evals exist, note it and skip.
-4. Post a single comment on the PR with all results.
+4. Post results as a PR comment, updating any existing comment from a previous run (see "Comment idempotency" below).
 
 ## Running evals
 
@@ -113,6 +113,10 @@ If a skill has no evals:
 
 ⚠️ No evals found. Consider adding `evals/evals.json` with test cases.
 ```
+
+## Comment idempotency
+
+Before posting, search existing PR comments for one that starts with `## Skill Eval Results`. If found, **update that comment** instead of creating a new one. This prevents duplicate comments on re-runs.
 
 ## Important notes
 

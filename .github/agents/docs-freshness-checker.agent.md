@@ -41,14 +41,16 @@ To find all skills and their sources:
 
 1. Find every `SKILL.md` file under the `skills/` directory.
 2. Parse the YAML frontmatter of each file.
-3. Read the `sources:` list. If a skill has no `sources:` field, skip it during freshness checks.
+3. Read the `sources:` list. If a skill has no `sources:` field, use the Elastic Docs MCP server to discover relevant upstream content (see "Skills without explicit sources" below).
 
 ## How to check freshness
 
-For each skill that has source URLs:
+For each skill:
 
 1. **Read** the SKILL.md file completely
-2. **Fetch** each source URL (append `.md` to the URL for LLM-friendly versions)
+2. **Fetch** upstream content:
+   - If `sources:` exist: fetch each source URL (append `.md` to the URL for LLM-friendly versions)
+   - If no `sources:`: use the Elastic Docs MCP server (`https://www.elastic.co/docs/_mcp/`) — call `SemanticSearch` with the skill's name and description to find relevant upstream pages, then fetch the top results with `GetDocumentByUrl` (with `includeBody: true`)
 3. **Compare** the fetched content against what the skill encodes:
    - Are all rules from the upstream source present in the skill?
    - Has any syntax changed (new options, renamed directives, changed defaults)?
@@ -101,5 +103,14 @@ If all skills are current, close the issue with a comment:
 All skills checked against upstream sources — no meaningful drift detected.
 
 - skill-name: current
-- skill-name: skipped (no sources)
+- skill-name: current (sources discovered via MCP)
 ```
+
+## Skills without explicit sources
+
+When a skill has no `sources:` frontmatter, use the Elastic Docs MCP server at `https://www.elastic.co/docs/_mcp/` to find relevant upstream documentation:
+
+1. Call `SemanticSearch` with the skill's name and a brief summary of its purpose.
+2. Review the top results — pick pages that clearly correspond to the rules or syntax the skill encodes.
+3. Fetch each candidate page with `GetDocumentByUrl` (set `includeBody: true`) and compare against the skill.
+4. If meaningful drift is found, update the skill AND add the discovered URLs to its `sources:` frontmatter so future checks can use them directly.
