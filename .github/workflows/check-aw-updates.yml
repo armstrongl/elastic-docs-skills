@@ -1,0 +1,84 @@
+# Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+# or more contributor license agreements. See the NOTICE file distributed with
+# this work for additional information regarding copyright
+# ownership. Elasticsearch B.V. licenses this file to you under
+# the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#	http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: Check gh-aw Updates
+
+on:
+  schedule:
+    - cron: '0 9 * * 1' # Weekly on Mondays at 9am UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-updates:
+    name: Check for gh-aw updates and recompile lock files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install gh-aw
+        run: gh extension install github/gh-aw
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Save current lock file checksums
+        run: |
+          sha256sum .github/workflows/*.lock.yml > /tmp/lock-checksums-before.txt 2>/dev/null || true
+
+      - name: Recompile lock files
+        run: |
+          for md_file in .github/workflows/*.md; do
+            [ -f "$md_file" ] || continue
+            lock_file="${md_file%.md}.lock.yml"
+            [ -f "$lock_file" ] || continue
+            echo "Compiling $md_file..."
+            gh aw compile "$md_file" || echo "Warning: failed to compile $md_file"
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for changes
+        id: changes
+        run: |
+          sha256sum .github/workflows/*.lock.yml > /tmp/lock-checksums-after.txt 2>/dev/null || true
+          if diff -q /tmp/lock-checksums-before.txt /tmp/lock-checksums-after.txt > /dev/null 2>&1; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          branch="automated/gh-aw-update-$(date +%Y%m%d)"
+          git checkout -b "$branch"
+          git add .github/workflows/*.lock.yml .github/aw/actions-lock.json
+          git commit -m "Update gh-aw lock files
+
+          Automated recompilation of gh-aw workflow lock files."
+          git push -u origin "$branch"
+          gh pr create \
+            --title "Update gh-aw lock files" \
+            --body "Automated weekly check detected updated gh-aw lock files after recompilation.
+
+          Review the lock file diffs to verify the changes are expected." \
+            --label "automated"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

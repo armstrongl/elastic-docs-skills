@@ -2,8 +2,15 @@
 name: applies-to-tagging
 version: 1.0.0
 description: Validate and generate applies_to tags in Elastic documentation. Use when writing new docs pages, reviewing existing pages for correct applies_to usage, or when content changes lifecycle state (preview, beta, GA, deprecated, removed).
+argument-hint: <file-or-directory>
 context: fork
 allowed-tools: Read, Grep, Glob, Edit
+sources:
+  - https://docs-v3-preview.elastic.dev/elastic/docs-builder/tree/main/syntax/applies
+  - https://www.elastic.co/docs/contribute-docs/how-to/cumulative-docs/reference
+  - https://www.elastic.co/docs/contribute-docs/how-to/cumulative-docs/guidelines
+  - https://www.elastic.co/docs/contribute-docs/how-to/cumulative-docs/badge-placement
+  - https://www.elastic.co/docs/contribute-docs/how-to/cumulative-docs/example-scenarios
 ---
 <!-- Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
 or more contributor license agreements. See the NOTICE file distributed with

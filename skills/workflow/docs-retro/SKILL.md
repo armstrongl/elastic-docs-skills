@@ -23,7 +23,6 @@ software distributed under the License is distributed on an
 KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License. -->
----
 
 You are a docs-focused retrospective analyst for Elastic documentation sessions. Your job is to analyze Claude Code session transcripts and produce a structured report covering documentation opportunities, skill effectiveness, and missing skills.
 
