@@ -1,12 +1,13 @@
 ---
 name: skill-review
-version: 1.0.0
+version: 1.1.0
 description: Review an Elastic agent skill against official documentation for accuracy, completeness, and coverage gaps. Use when a writer wants to review, audit, or validate a skill from a repository of agent skills.
 disable-model-invocation: true
 argument-hint: <path-to-skill-folder-or-SKILL.md>
 allowed-tools: Read, Grep, Glob, CallMcpTool, WebFetch
 sources:
   - https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+  - https://docs-v3-preview.elastic.dev/elastic/docs-builder/tree/main/mcp
 ---
 <!-- Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
 or more contributor license agreements. See the NOTICE file distributed with
@@ -50,15 +51,43 @@ Extract the following from the combined content:
 
 ## Phase 2: Discover relevant official docs
 
-Use the `elastic-docs` MCP server to find the authoritative documentation for the topics identified in Phase 1.
+Use the Elastic Docs MCP server at `https://www.elastic.co/docs/_mcp/` to find the authoritative documentation for the topics identified in Phase 1. The server is a stateless HTTP endpoint — no authentication required.
 
-### Preferred: elastic-docs MCP
+**Important: version baseline.** Only consider documentation for Elastic version 9.x and higher as the source of truth. Pre-9.x documentation is outdated and must not be used to validate or contradict skill content. If a skill references pre-9.x versions, flag those references as requiring updates.
 
-1. **`SemanticSearch`**: run 2–3 targeted searches covering the skill's scope. Use the product name and key feature terms as queries.
-2. **`FindRelatedDocs`**: discover related pages that might cover adjacent steps the skill should mention.
-3. **`GetDocumentByUrl`**: fetch the full body of the 2–5 most relevant pages for detailed comparison. Request the body content, not just summaries.
+### Available MCP tools
 
-If the skill already contains doc URLs, fetch those pages too — they are the skill author's own source claims and must be verified.
+The server exposes six tools organized into three groups:
+
+**Search tools:**
+
+| Tool | Purpose |
+|------|---------|
+| `search_docs` | Search all published Elastic docs by meaning. Supports filtering by product and navigation section. Returns AI summaries, relevance scores, and navigation context. |
+| `find_related_docs` | Find pages related to a given topic. Useful for discovering adjacent content the skill should reference. |
+
+**Document tools:**
+
+| Tool | Purpose |
+|------|---------|
+| `get_document_by_url` | Retrieve a specific page by URL or path. Returns title, AI summaries, headings, navigation context, and optionally the full body. |
+| `analyze_document_structure` | Analyze page structure: heading count, link count, parent pages, and AI enrichment status. |
+
+**Coherence tools:**
+
+| Tool | Purpose |
+|------|---------|
+| `check_docs_coherence` | Check how coherently a topic is covered across all Elastic docs. Finds related documents and analyzes coverage across products and sections. |
+| `find_docs_inconsistencies` | Find potential inconsistencies across pages covering the same topic within a product area. |
+
+### How to use them
+
+1. **`search_docs`**: run 2–3 targeted searches covering the skill's scope. Use the product name and key feature terms as queries.
+2. **`find_related_docs`**: discover related pages that might cover adjacent steps the skill should mention.
+3. **`get_document_by_url`**: fetch the full body of the 2–5 most relevant pages for detailed comparison. Request the body content, not just summaries.
+4. **`find_docs_inconsistencies`**: if the skill covers a topic that spans multiple doc pages, check for inconsistencies across those pages.
+
+If the skill already contains doc URLs, fetch those pages with `get_document_by_url` too — they are the skill author's own source claims and must be verified.
 
 ### Fallback: WebFetch
 
@@ -81,6 +110,7 @@ For each procedural claim and factual assertion from Phase 1, check whether the 
 - Configuration syntax and default values.
 - Version-specific claims (feature introduced in X, deprecated in Y).
 - Field names, index patterns, and environment variables.
+- **Function, command, and feature existence**: for every function, command, operator, or feature the skill references, actively search for it in the official docs. Do not hedge with "may not exist" — confirm or deny its existence by searching the docs. If a search returns no results, flag it definitively as "not found in official docs" and suggest the correct alternative if one exists.
 
 Flag contradictions with citations from both the skill and the docs.
 
@@ -208,7 +238,8 @@ If the skill has no issues in a section, say so explicitly rather than omitting 
 
 ## Guidelines
 
-- Treat the official Elastic documentation as the ultimate source of truth for accuracy checks.
+- Treat the official Elastic documentation for version 9.x and higher as the ultimate source of truth for accuracy checks. Ignore pre-9.x docs.
+- **Verify, don't hedge.** When the skill references a function, command, or feature, search for it in the docs. Report definitive findings ("does not exist in official docs"), not hedged guesses ("may not exist").
 - Do NOT treat coverage gaps as errors. Skills often capture useful knowledge that docs should adopt.
 - Be specific in citations: include the doc URL and the relevant passage, not just "the docs say otherwise."
 - Review SKILL.md and `references/` files. Do not review scripts.
