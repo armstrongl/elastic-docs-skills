@@ -1,8 +1,7 @@
 ---
 name: changelog-tool
-version: 1.0.0
-description: Guide changelog feature development in docs-builder. Use before adding CLI options or profile fields, changing filter mechanisms, modifying the entry or bundle schema, updating the {changelog} directive or changelog render, or adding and modifying tests.
-context: fork
+version: 1.0.1
+description: Use before adding CLI options or profile fields, changing filter mechanisms, modifying the entry or bundle schema, updating the {changelog} directive or changelog render, or adding and modifying tests in docs-builder changelog commands.
 allowed-tools: Read, Grep, Glob, Edit, Bash
 ---
 <!-- Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
@@ -36,24 +35,6 @@ ChangelogRemoveService.cs        — removes filtered changelogs; checks bundle 
 ChangelogConfigurationLoader.cs  — parses changelog.yml
 BundleConfiguration.cs           — model: directory, outputDirectory, resolve, repo, owner, profiles
 ChangelogConfigurationYaml.cs    — internal YAML DTOs (always mirror model changes here)
-```
-
-Flow diagram:
-
-```mermaid
-flowchart TD
-    CLI["ChangelogCommand<br>(Bundle or Remove)"] -->|"profile mode"| PFR["ProfileFilterResolver.ResolveAsync"]
-    CLI -->|"option mode"| DirectFilter["filter from CLI flags"]
-    PFR -->|"source: github_release"| GHRelease["GitHubReleaseService"]
-    PFR -->|"report / URL list"| PromReport["PromotionReportParser"]
-    PFR -->|"version + products pattern"| ProductFilter["ParseProfileProducts"]
-    GHRelease --> FilterResult["ProfileFilterResult"]
-    PromReport --> FilterResult
-    ProductFilter --> FilterResult
-    DirectFilter --> FilterResult
-    FilterResult --> Service["BundlingService or RemoveService"]
-    Service --> ApplyDefaults["ApplyConfigDefaults<br>(repo, owner, directory)"]
-    ApplyDefaults --> Execute["write bundle / delete files"]
 ```
 
 ## Command roles and synchronization
