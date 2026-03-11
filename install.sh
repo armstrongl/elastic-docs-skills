@@ -23,9 +23,9 @@ set -euo pipefail
 # Zero external dependencies — uses Python 3 curses (ships with macOS/Linux)
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/elastic/elastic-docs-skills/main/install.sh | bash
-#   curl -sSL https://raw.githubusercontent.com/elastic/elastic-docs-skills/main/install.sh | bash -s -- --list
-#   curl -sSL https://raw.githubusercontent.com/elastic/elastic-docs-skills/main/install.sh | bash -s -- --all
+#   curl -sSL https://ela.st/docs-skills-install | bash
+#   curl -sSL https://ela.st/docs-skills-install | bash -s -- --list
+#   curl -sSL https://ela.st/docs-skills-install | bash -s -- --all
 
 REPO="elastic/elastic-docs-skills"
 BRANCH="main"
@@ -115,12 +115,12 @@ pull_latest_local() {
 
 parse_field() {
   local file="$1" field="$2"
-  sed -n '/^---$/,/^---$/p' "$file" | grep "^${field}:" | head -1 | sed "s/^${field}: *//"
+  sed -n '/^---$/,/^---$/p' "$file" | grep "^${field}:" | head -1 | sed "s/^${field}: *//" || true
 }
 
 parse_field_from_content() {
   local content="$1" field="$2"
-  echo "$content" | sed -n '/^---$/,/^---$/p' | grep "^${field}:" | head -1 | sed "s/^${field}: *//"
+  echo "$content" | sed -n '/^---$/,/^---$/p' | grep "^${field}:" | head -1 | sed "s/^${field}: *//" || true
 }
 
 # Builds a TSV catalog: name\tversion\tcategory\tdescription\tpath
@@ -143,7 +143,7 @@ build_catalog_remote() {
     err "Failed to fetch repository tree from GitHub"; exit 1
   }
   local skill_paths
-  skill_paths=$(echo "$TREE_CACHE" | grep -o '"path":"skills/[^"]*SKILL\.md"' | sed 's/"path":"//;s/"//' | sort)
+  skill_paths=$(echo "$TREE_CACHE" | grep -oE '"path"[[:space:]]*:[[:space:]]*"skills/[^"]*SKILL\.md"' | sed -E 's/"path"[[:space:]]*:[[:space:]]*"//;s/"$//' | sort)
   [[ -z "$skill_paths" ]] && { err "No skills found in the remote catalog"; exit 1; }
 
   while IFS= read -r remote_path; do
@@ -196,7 +196,7 @@ install_one_remote() {
   else
     tree_response=$(curl -fsSL "${API_BASE}/git/trees/${BRANCH}?recursive=1" 2>/dev/null) || true
   fi
-  extra_files=$(echo "$tree_response" | grep -o "\"path\":\"${remote_dir}/[^\"]*\"" | sed 's/"path":"//;s/"//' | grep -v "SKILL\.md$" || true)
+  extra_files=$(echo "$tree_response" | grep -oE "\"path\"[[:space:]]*:[[:space:]]*\"${remote_dir}/[^\"]*\"" | sed -E 's/"path"[[:space:]]*:[[:space:]]*"//;s/"$//' | grep -v "SKILL\.md$" || true)
   while IFS= read -r extra_path; do
     [[ -z "$extra_path" ]] && continue
     local filename="${extra_path#"$remote_dir/"}"

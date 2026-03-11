@@ -6,7 +6,29 @@ Browse the catalog, pick the skills you need, and install them with a single com
 
 ## Quick start
 
-Clone the repository and run the interactive installer:
+Install directly from GitHub (no clone required):
+
+```bash
+curl -fsSL https://ela.st/docs-skills-install | bash
+```
+
+Optional flags:
+
+```bash
+# List available skills.
+curl -fsSL https://ela.st/docs-skills-install | bash -s -- --list
+
+# Install all skills.
+curl -fsSL https://ela.st/docs-skills-install | bash -s -- --all
+```
+
+Alternatively, install with the open `skills` CLI:
+
+```bash
+npx --yes skills@latest add elastic/elastic-docs-skills -g -a claude-code
+```
+
+If you plan to contribute, clone the repository and run locally:
 
 ```bash
 git clone https://github.com/elastic/elastic-docs-skills.git
@@ -67,10 +89,16 @@ Bump the `version` field in your `SKILL.md` frontmatter when making changes.
 ## Updating installed skills
 
 ```bash
-./install.sh --update
+curl -fsSL https://ela.st/docs-skills-install | bash -s -- --update
 ```
 
 This compares your installed skill versions against the catalog and updates any that have newer versions available.
+
+If you cloned this repository, you can also run:
+
+```bash
+./install.sh --update
+```
 
 ## CI validation
 
