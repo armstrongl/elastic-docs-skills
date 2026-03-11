@@ -171,7 +171,7 @@ def render_html(categories: dict[str, list[dict]]) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Elastic Docs Skills Catalog</title>
+  <title>Elastic Docs Skills Catalogue</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/feather-icons"></script>
@@ -507,7 +507,7 @@ def render_html(categories: dict[str, list[dict]]) -> str:
       <i data-feather="zap"></i>
       <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">elastic/docs-skills</span>
     </div>
-    <h1><span>Skills Catalog</span></h1>
+    <h1><span>Elastic Docs Skills Catalogue</span></h1>
     <p>Claude Code skills for Elastic documentation workflows, available as slash commands.</p>
     <div class="stats">
       <div class="stat">
