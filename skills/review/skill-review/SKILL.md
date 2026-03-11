@@ -48,6 +48,7 @@ Extract the following from the combined content:
 2. **Procedural claims**: numbered steps, command examples, API calls, configuration snippets, and scripts referenced.
 3. **Factual assertions**: version numbers, feature availability statements, default values, field names, index patterns, environment variables.
 4. **Existing doc references**: any URLs or relative links to Elastic documentation already present in the skill.
+5. **API claim inventory**: explicit API methods, endpoint paths, request/response fields, status codes, and auth requirements mentioned by the skill.
 
 ## Phase 2: Discover relevant official docs
 
@@ -103,6 +104,18 @@ Example: if a skill says "LOOKUP JOIN was introduced in 8.18" but the 9.x docs s
 
 Do not flag a discrepancy between the skill and 9.x docs as an error if the skill is making a claim about 8.x history — verify against `/guide/` first.
 
+### API docs requirement (mandatory when API claims exist)
+
+If Phase 1 finds any API claim inventory items, you must explicitly attempt API operation-level verification, not only narrative docs.
+
+1. Run at least one API-focused search query that includes the method/path or operation name (for example, `PUT /_index_template/{name}`).
+2. Fetch at least 1-3 operation-level pages under `/docs/api/doc/.../operation/...` when available.
+3. Also fetch at least one narrative/reference page for behavior context.
+4. If operation pages are not retrievable via MCP after reasonable attempts:
+   - Record this as an **API evidence retrieval limitation**.
+   - Do NOT mark a contradiction based only on missing retrievability.
+   - Continue with the best available narrative/reference evidence and clearly state confidence limits.
+
 ### Fallback: WebFetch
 
 If the MCP is unavailable, construct URLs manually:
@@ -127,6 +140,8 @@ For each procedural claim and factual assertion from Phase 1, check whether the 
 - **Function, command, and feature existence**: for every function, command, operator, or feature the skill references, actively search for it in the official docs. Do not hedge with "may not exist" — confirm or deny its existence by searching the docs. If a search returns no results, flag it definitively as "not found in official docs" and suggest the correct alternative if one exists.
 
 Flag contradictions with citations from both the skill and the docs.
+
+When API claim inventory exists, validate claims against both operation-level API pages and narrative/reference docs with equal importance. Use API pages to confirm endpoint/field/status-code existence and contract details, and use narrative/reference pages to confirm workflow intent, caveats, and recommended usage. Do not treat missing or conflicting evidence in only one source type as definitive without checking the other source type.
 
 ### 3b. Completeness
 
@@ -224,6 +239,7 @@ Present all findings as a single structured report.
 - **Scope**: <one-sentence summary of what the skill does>
 - **Files reviewed**: SKILL.md, references/... (list all)
 - **Docs pages consulted**: <list with URLs>
+- **API evidence coverage**: <operation-level API pages checked, or explicit MCP retrieval limitation>
 
 ### Docs accuracy
 <For each issue: what the skill says, what the docs say, and a citation for each.>
