@@ -26,7 +26,12 @@ SKILLS_DIR = Path("skills")
 OUT_DIR = Path("_site")
 
 REPO_URL = "https://github.com/elastic/elastic-docs-skills"
-INSTALL_CMD = "curl -fsSL https://raw.githubusercontent.com/elastic/elastic-docs-skills/main/install.sh | bash"
+INSTALL_COMMANDS = {
+    "Install": "curl -fsSL https://ela.st/docs-skills-install | bash",
+    "List": "curl -fsSL https://ela.st/docs-skills-install | bash -s -- --list",
+    "Update": "curl -fsSL https://ela.st/docs-skills-install | bash -s -- --update",
+    "Skills CLI": "npx --yes skills@latest add elastic/elastic-docs-skills -g -a claude-code",
+}
 
 CATEGORY_META = {
     "authoring": {
@@ -339,10 +344,26 @@ def render_html(categories: dict[str, list[dict]]) -> str:
 
     .install-banner {{
       margin-top: 2rem;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+      width: min(100%, 900px);
+    }}
+
+    .install-row {{
       display: flex;
       align-items: center;
-      justify-content: center;
       gap: 0.5rem;
+      width: 100%;
+    }}
+
+    .cmd-label {{
+      min-width: 74px;
+      text-align: right;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 600;
     }}
 
     .install-banner code {{
@@ -354,6 +375,9 @@ def render_html(categories: dict[str, list[dict]]) -> str:
       font-size: 0.8rem;
       color: var(--text);
       user-select: all;
+      text-align: left;
+      flex: 1;
+      overflow-x: auto;
     }}
 
     .install-banner .copy-btn {{
@@ -496,10 +520,34 @@ def render_html(categories: dict[str, list[dict]]) -> str:
       </div>
     </div>
     <div class="install-banner">
-      <code id="install-cmd">{INSTALL_CMD}</code>
-      <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('install-cmd').textContent).then(()=>{{this.innerHTML='<i data-feather=\\'check\\'></i>';feather.replace();setTimeout(()=>{{this.innerHTML='<i data-feather=\\'clipboard\\'></i>';feather.replace()}},2000)}})" title="Copy to clipboard">
-        <i data-feather="clipboard"></i>
-      </button>
+      <div class="install-row">
+        <span class="cmd-label">Install</span>
+        <code id="install-cmd">{" ".join(INSTALL_COMMANDS["Install"].split())}</code>
+        <button class="copy-btn" onclick="copyCmd('install-cmd', this)" title="Copy install command">
+          <i data-feather="clipboard"></i>
+        </button>
+      </div>
+      <div class="install-row">
+        <span class="cmd-label">List</span>
+        <code id="list-cmd">{" ".join(INSTALL_COMMANDS["List"].split())}</code>
+        <button class="copy-btn" onclick="copyCmd('list-cmd', this)" title="Copy list command">
+          <i data-feather="clipboard"></i>
+        </button>
+      </div>
+      <div class="install-row">
+        <span class="cmd-label">Update</span>
+        <code id="update-cmd">{" ".join(INSTALL_COMMANDS["Update"].split())}</code>
+        <button class="copy-btn" onclick="copyCmd('update-cmd', this)" title="Copy update command">
+          <i data-feather="clipboard"></i>
+        </button>
+      </div>
+      <div class="install-row">
+        <span class="cmd-label">Skills CLI</span>
+        <code id="skills-cli-cmd">{" ".join(INSTALL_COMMANDS["Skills CLI"].split())}</code>
+        <button class="copy-btn" onclick="copyCmd('skills-cli-cmd', this)" title="Copy skills CLI command">
+          <i data-feather="clipboard"></i>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -511,7 +559,21 @@ def render_html(categories: dict[str, list[dict]]) -> str:
     Built from <a href="https://github.com/elastic/elastic-docs-skills">elastic/elastic-docs-skills</a> &middot; Auto-generated on each push to <code>main</code>
   </footer>
 
-  <script>feather.replace();</script>
+  <script>
+    function copyCmd(id, button) {{
+      const value = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(value).then(() => {{
+        button.innerHTML = "<i data-feather='check'></i>";
+        feather.replace();
+        setTimeout(() => {{
+          button.innerHTML = "<i data-feather='clipboard'></i>";
+          feather.replace();
+        }}, 2000);
+      }});
+    }}
+
+    feather.replace();
+  </script>
 </body>
 </html>
 """
