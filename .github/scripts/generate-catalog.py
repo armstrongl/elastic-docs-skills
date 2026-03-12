@@ -512,6 +512,7 @@ def render_html(categories: dict[str, list[dict]]) -> str:
 
     .skill-install code {{
       flex: 1;
+      min-width: 0;
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.7rem;
       color: var(--text-muted);
@@ -519,8 +520,9 @@ def render_html(categories: dict[str, list[dict]]) -> str:
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 0.35rem 0.6rem;
-      overflow-x: auto;
+      overflow: hidden;
       white-space: nowrap;
+      text-overflow: ellipsis;
       user-select: all;
     }}
 
