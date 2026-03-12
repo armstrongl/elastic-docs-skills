@@ -27,10 +27,10 @@ OUT_DIR = Path("_site")
 
 REPO_URL = "https://github.com/elastic/elastic-docs-skills"
 INSTALL_COMMANDS = {
-    "Install": "curl -fsSL https://ela.st/docs-skills-install | bash",
-    "List": "curl -fsSL https://ela.st/docs-skills-install | bash -s -- --list",
-    "Update": "curl -fsSL https://ela.st/docs-skills-install | bash -s -- --update",
-    "Skills CLI": "npx --yes skills@latest add elastic/elastic-docs-skills -g -a claude-code",
+    "Install all": "npx --yes skills@latest add elastic/elastic-docs-skills -g",
+    "Update all": "npx --yes skills@latest update -g",
+    "TUI install": "curl -fsSL https://ela.st/docs-skills-install | bash",
+    "TUI update": "curl -fsSL https://ela.st/docs-skills-install | bash -s -- --update",
 }
 
 CATEGORY_META = {
@@ -148,18 +148,26 @@ def render_html(categories: dict[str, list[dict]]) -> str:
                 sources_html = f'<div class="sources">{len(sources)} source{"s" if len(sources) != 1 else ""}</div>'
 
             skill_url = f"{REPO_URL}/blob/main/{skill['_path']}"
+            install_cmd = f"npx --yes skills@latest add elastic/elastic-docs-skills --skill {name} -g"
+            card_id = name.replace("-", "_")
             cards_html += f"""
-        <a class="skill-card" href="{skill_url}" target="_blank" rel="noopener">
+        <div class="skill-card" data-url="{skill_url}">
           <div class="skill-header">
             <code class="skill-name">/{name}</code>
             <span class="version">v{version}</span>
           </div>
           <p class="skill-desc">{short_desc}</p>
+          <div class="skill-install">
+            <code id="cmd-{card_id}">{install_cmd}</code>
+            <button class="copy-btn" onclick="event.stopPropagation(); copyCmd('cmd-{card_id}', this)" title="Copy install command">
+              <i data-feather="clipboard"></i>
+            </button>
+          </div>
           <div class="skill-footer">
             <div class="tags">{tags_html}</div>
             {sources_html}
           </div>
-        </a>
+        </div>
 """
         cards_html += """
       </div>
@@ -403,6 +411,30 @@ def render_html(categories: dict[str, list[dict]]) -> str:
       height: 16px;
     }}
 
+    .install-sep {{
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      padding: 0.25rem 0;
+      position: relative;
+    }}
+
+    .install-sep span {{
+      background: var(--bg);
+      padding: 0 0.75rem;
+      position: relative;
+      z-index: 1;
+    }}
+
+    .install-sep::before {{
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      border-top: 1px solid var(--border);
+    }}
+
     .skill-header {{
       display: flex;
       align-items: center;
@@ -471,6 +503,51 @@ def render_html(categories: dict[str, list[dict]]) -> str:
       color: #FEC514;
     }}
 
+    .skill-install {{
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      margin-bottom: 0.75rem;
+    }}
+
+    .skill-install code {{
+      flex: 1;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      background: color-mix(in srgb, var(--surface) 50%, var(--bg));
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.35rem 0.6rem;
+      overflow-x: auto;
+      white-space: nowrap;
+      user-select: all;
+    }}
+
+    .skill-install .copy-btn {{
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.3rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s, border-color 0.2s;
+      flex-shrink: 0;
+    }}
+
+    .skill-install .copy-btn:hover {{
+      color: var(--accent);
+      border-color: var(--accent);
+    }}
+
+    .skill-install .copy-btn svg {{
+      width: 14px;
+      height: 14px;
+    }}
+
     .sources {{
       font-size: 0.7rem;
       color: var(--text-muted);
@@ -521,30 +598,31 @@ def render_html(categories: dict[str, list[dict]]) -> str:
     </div>
     <div class="install-banner">
       <div class="install-row">
-        <span class="cmd-label">Install</span>
-        <code id="install-cmd">{" ".join(INSTALL_COMMANDS["Install"].split())}</code>
+        <span class="cmd-label">Install all</span>
+        <code id="install-cmd">{INSTALL_COMMANDS["Install all"]}</code>
         <button class="copy-btn" onclick="copyCmd('install-cmd', this)" title="Copy install command">
           <i data-feather="clipboard"></i>
         </button>
       </div>
       <div class="install-row">
-        <span class="cmd-label">List</span>
-        <code id="list-cmd">{" ".join(INSTALL_COMMANDS["List"].split())}</code>
-        <button class="copy-btn" onclick="copyCmd('list-cmd', this)" title="Copy list command">
-          <i data-feather="clipboard"></i>
-        </button>
-      </div>
-      <div class="install-row">
-        <span class="cmd-label">Update</span>
-        <code id="update-cmd">{" ".join(INSTALL_COMMANDS["Update"].split())}</code>
+        <span class="cmd-label">Update all</span>
+        <code id="update-cmd">{INSTALL_COMMANDS["Update all"]}</code>
         <button class="copy-btn" onclick="copyCmd('update-cmd', this)" title="Copy update command">
           <i data-feather="clipboard"></i>
         </button>
       </div>
+      <div class="install-sep"><span>or use the interactive TUI (macOS/Linux)</span></div>
       <div class="install-row">
-        <span class="cmd-label">Skills CLI</span>
-        <code id="skills-cli-cmd">{" ".join(INSTALL_COMMANDS["Skills CLI"].split())}</code>
-        <button class="copy-btn" onclick="copyCmd('skills-cli-cmd', this)" title="Copy skills CLI command">
+        <span class="cmd-label">TUI install</span>
+        <code id="tui-install-cmd">{INSTALL_COMMANDS["TUI install"]}</code>
+        <button class="copy-btn" onclick="copyCmd('tui-install-cmd', this)" title="Copy TUI install command">
+          <i data-feather="clipboard"></i>
+        </button>
+      </div>
+      <div class="install-row">
+        <span class="cmd-label">TUI update</span>
+        <code id="tui-update-cmd">{INSTALL_COMMANDS["TUI update"]}</code>
+        <button class="copy-btn" onclick="copyCmd('tui-update-cmd', this)" title="Copy TUI update command">
           <i data-feather="clipboard"></i>
         </button>
       </div>
@@ -571,6 +649,12 @@ def render_html(categories: dict[str, list[dict]]) -> str:
         }}, 2000);
       }});
     }}
+
+    document.querySelectorAll('.skill-card[data-url]').forEach(card => {{
+      card.addEventListener('click', () => {{
+        window.open(card.dataset.url, '_blank', 'noopener');
+      }});
+    }});
 
     feather.replace();
   </script>

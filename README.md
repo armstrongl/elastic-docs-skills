@@ -6,7 +6,42 @@ Browse the catalog, pick the skills you need, and install them with a single com
 
 ## Quick start
 
-Install directly from GitHub (no clone required):
+Install all skills with a single command (requires Node.js):
+
+```bash
+npx --yes skills@latest add elastic/elastic-docs-skills -g
+```
+
+This auto-detects your installed agents (Claude Code, Cursor, Codex, etc.) and prompts you to choose which ones to install to.
+
+Update all installed skills to the latest versions:
+
+```bash
+npx --yes skills@latest update -g
+```
+
+Install a single skill by name:
+
+```bash
+npx --yes skills@latest add elastic/elastic-docs-skills --skill docs-check-style -g
+```
+
+Other useful commands:
+
+```bash
+# List installed skills.
+npx --yes skills@latest list -g
+
+# Check for available updates.
+npx --yes skills@latest check -g
+
+# Remove a skill.
+npx --yes skills@latest remove docs-check-style -g
+```
+
+### Alternative: interactive TUI installer
+
+If you prefer an interactive terminal UI (macOS and Linux only, requires Python 3):
 
 ```bash
 curl -fsSL https://ela.st/docs-skills-install | bash
@@ -20,12 +55,9 @@ curl -fsSL https://ela.st/docs-skills-install | bash -s -- --list
 
 # Install all skills.
 curl -fsSL https://ela.st/docs-skills-install | bash -s -- --all
-```
 
-Alternatively, install with the open `skills` CLI:
-
-```bash
-npx --yes skills@latest add elastic/elastic-docs-skills -g -a claude-code
+# Update installed skills.
+curl -fsSL https://ela.st/docs-skills-install | bash -s -- --update
 ```
 
 If you plan to contribute, clone the repository and run locally:
@@ -89,15 +121,13 @@ Bump the `version` field in your `SKILL.md` frontmatter when making changes.
 ## Updating installed skills
 
 ```bash
-curl -fsSL https://ela.st/docs-skills-install | bash -s -- --update
+npx --yes skills@latest update -g
 ```
 
-This compares your installed skill versions against the catalog and updates any that have newer versions available.
-
-If you cloned this repository, you can also run:
+Or, if using the TUI installer:
 
 ```bash
-./install.sh --update
+curl -fsSL https://ela.st/docs-skills-install | bash -s -- --update
 ```
 
 ## CI validation
